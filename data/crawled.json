@@ -1,0 +1,30 @@
+{
+  "status": "success",
+  "pages_crawled": 2,
+  "results": [
+    {
+      "url": "https://example.com/page1",
+      "title": "Page 1 from https://example.com/page1",
+      "content_length": 1024,
+      "links_found": [
+        "https://example.com/page1/link0",
+        "https://example.com/page1/link1",
+        "https://example.com/page1/link2"
+      ]
+    },
+    {
+      "url": "https://example.com/page2",
+      "title": "Page 2 from https://example.com/page2",
+      "content_length": 2048,
+      "links_found": [
+        "https://example.com/page2/link0",
+        "https://example.com/page2/link1",
+        "https://example.com/page2/link2"
+      ]
+    }
+  ],
+  "metadata": {
+    "depth": 2,
+    "timestamp": "2026-06-25T12:00:00"
+  }
+}

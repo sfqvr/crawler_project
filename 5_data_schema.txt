@@ -1,0 +1,13 @@
+"stage5": {
+  "success": true,
+  "error_message": "",
+  "model_name": "qwen/qwen3.5-35b-a3b",
+  "prompt_version": "stage5_v1",
+  "processed_at_utc": "2026-03-16T...",
+  "input_html_length": 27067,
+  "llm_input_html_length": 27067,
+  "html_was_truncated": false,
+  "agent_final_message": "Done. The markdown document has been submitted.",
+  "markdown_length": 18342,
+  "markdown_content": "# Incident summary\n\n..."
+}

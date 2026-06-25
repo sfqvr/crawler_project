@@ -1,0 +1,584 @@
+<html>
+<head>
+<!-- End Wayback Rewrite JS Include -->
+
+
+    <title>Cloudflare outage on July 17, 2020</title>
+    <!-- Google Tag Manager -->
+<!-- End Google Tag Manager -->
+
+<!-- Google Optimize -->
+<!--<script src="/assets/js/index.js"></script>-->
+<!-- Cloudflare Web Analytics -->
+<!-- End Cloudflare Web Analytics -->
+
+</head>
+
+<body>
+<!-- BEGIN WAYBACK TOOLBAR INSERT -->
+<div>The Wayback Machine - https://web.archive.org/web/20211016040522/https://blog.cloudflare.com/cloudflare-outage-on-july-17-2020/</div>
+<!-- END WAYBACK TOOLBAR INSERT -->
+ 
+
+    <div>
+
+        <header>
+    <div>
+        <div>
+            <span>
+                <a href="https://web.archive.org/web/20211016040522/https://www.cloudflare.com/plans/enterprise/contact/">Contact Sales:
+                </a>
+                <a href="https://web.archive.org/web/20211016040522/tel:+18889935273">+1 (888) 274-3482</a>
+            </span>
+        </div>
+    </div>
+    <div>
+        <a href="https://web.archive.org/web/20211016040522/https://blog.cloudflare.com/">
+            <img src="https://web.archive.org/web/20211016040522im_/https://blog-cloudflare-com-assets.storage.googleapis.com/2019/06/logo-cloudflare-dark-1.svg" alt="The Cloudflare Blog" width="300" height="111">
+        </a>
+        <h2>
+            <a href="/web/20211016040522/https://blog.cloudflare.com/">
+                <span>The Cloudflare Blog</span>
+            </a>
+        </h2>
+    </div>
+    <div>
+        <div>
+            <p>Thanks for being here, come back soon. Get notified of new posts:</p>
+        </div>
+        <div>
+            <p>Subscription confirmed. Thank you for subscribing!</p>
+        </div>
+    </div>
+</header>
+
+<nav>
+    <div>
+        <div>
+            <a href="/web/20211016040522/https://blog.cloudflare.com/tag/product-news/">Product News</a>
+        </div>
+        <div>
+            <a href="/web/20211016040522/https://blog.cloudflare.com/tag/speed-and-reliability/">Speed &amp; Reliability</a>
+        </div>
+        <div>
+            <a href="/web/20211016040522/https://blog.cloudflare.com/tag/security/">Security</a>
+        </div>
+        <div>
+            <a href="/web/20211016040522/https://blog.cloudflare.com/tag/serverless/">Serverless</a>
+        </div>
+        <div>
+            <a href="/web/20211016040522/https://blog.cloudflare.com/tag/zero-trust/">Zero Trust</a>
+        </div>
+        <div>
+            <a href="/web/20211016040522/https://blog.cloudflare.com/tag/developers/">Developers</a>
+        </div>
+        <div>
+            <a href="/web/20211016040522/https://blog.cloudflare.com/tag/deep-dive/">Deep Dive</a>
+        </div>
+        <div>
+            <a href="/web/20211016040522/https://blog.cloudflare.com/tag/life-at-cloudflare/">Life @Cloudflare</a>
+        </div>
+        <a href="/web/20211016040522/https://blog.cloudflare.com/search/"><img src="/web/20211016040522im_/https://blog.cloudflare.com/assets/images/magnifier.svg?v=6e624d9476">
+        </a>
+        <img src="/web/20211016040522im_/https://blog.cloudflare.com/assets/images/hamburger.svg?v=6e624d9476">
+    </div>
+
+    <div>
+        <div>
+            <div>
+                <a href="/web/20211016040522/https://blog.cloudflare.com/tag/product-news/">Product News</a>
+            </div>
+            <div>
+                <a href="/web/20211016040522/https://blog.cloudflare.com/tag/speed-and-reliability/">Speed &amp; Reliability</a>
+            </div>
+            <div>
+                <a href="/web/20211016040522/https://blog.cloudflare.com/tag/security/">Security</a>
+            </div>
+            <div>
+                <a href="/web/20211016040522/https://blog.cloudflare.com/tag/serverless/">Serverless</a>
+            </div>
+            <div>
+                <a href="/web/20211016040522/https://blog.cloudflare.com/tag/zero-trust/">Zero Trust</a>
+            </div>
+            <div>
+                <a href="/web/20211016040522/https://blog.cloudflare.com/tag/developers/">Developers</a>
+            </div>
+            <div>
+                <a href="/web/20211016040522/https://blog.cloudflare.com/tag/deep-dive/">Deep Dive</a>
+            </div>
+            <div>
+                <a href="/web/20211016040522/https://blog.cloudflare.com/tag/life-at-cloudflare/">Life @Cloudflare</a>
+            </div>
+        </div>
+    </div>
+</nav>
+        
+
+<main>
+    <article>
+        <h1>Cloudflare outage on July 17, 2020</h1>
+
+
+        <p>Loading...</p>
+        <ul>
+            <li>
+                <a href="/web/20211016040522/https://blog.cloudflare.com/author/john-graham-cumming/">
+                    <img src="/web/20211016040522im_/https://blog.cloudflare.com/content/images/2017/03/url-2.jpg" alt="John Graham-Cumming">
+                </a>
+                <div>
+                    <a href="/web/20211016040522/https://blog.cloudflare.com/author/john-graham-cumming">John Graham-Cumming</a>
+                </div>
+            </li>
+        </ul>
+
+        <section>
+            <div>
+                <p>Today a configuration error in our backbone network caused an outage for Internet properties and Cloudflare services that lasted 27 minutes. We saw traffic drop by about 50% across our network. Because of the architecture of our backbone this outage didn’t affect the entire Cloudflare network and was localized to certain geographies. </p>
+<p>The outage occurred because, while working on an unrelated issue with a segment of the backbone from Newark to Chicago, our network engineering team updated the configuration on a router in Atlanta to alleviate congestion. This configuration contained an error that caused all traffic across our backbone to be sent to Atlanta. This quickly overwhelmed the Atlanta router and caused Cloudflare network locations connected to the backbone to fail.</p>
+<p>The affected locations were San Jose, Dallas, Seattle, Los Angeles, Chicago, Washington, DC, Richmond, Newark, Atlanta, London, Amsterdam, Frankfurt, Paris, Stockholm, Moscow, St. Petersburg, São Paulo, Curitiba, and Porto Alegre. Other locations continued to operate normally.</p>
+<p>For the avoidance of doubt: this was not caused by an attack or breach of any kind.</p>
+<p>We are sorry for this outage and have already made a global change to the backbone configuration that will prevent it from being able to occur again.</p>
+<h3>The Cloudflare Backbone</h3>
+<figure><img src="https://web.archive.org/web/20211016040522im_/https://blog.cloudflare.com/content/images/2020/07/1a.png" width="1043" height="749"></figure><p>Cloudflare operates a <em>backbone</em> between many of our data centers around the world. The backbone is a series of private lines between our data centers that we use for faster and more reliable paths between them. These links allow us to carry traffic between different data centers, without going over the public Internet. </p>
+<p>We use this, for example, to reach a website origin server sitting in New York, carrying requests over our private backbone to both San Jose, California, as far as Frankfurt or São Paulo. This additional option to avoid the public Internet allows a higher quality of service, as the private network can be used to avoid Internet congestion points. With the backbone, we have far greater control over where and how to route Internet requests and traffic than the public Internet provides.</p>
+<h3>Timeline</h3>
+<p>All timestamps are UTC.</p>
+<p>First, an issue occurred on the backbone link between Newark and Chicago which led to backbone congestion in between Atlanta and Washington, DC. </p>
+<p>In responding to that issue, a configuration change was made in Atlanta. That change started the outage at 21:12. Once the outage was understood, the Atlanta router was disabled and traffic began flowing normally again at 21:39. </p>
+<p>Shortly after, we saw congestion at one of our core data centers that processes logs and metrics, causing some logs to be dropped. During this period the edge network continued to operate normally.</p>
+<ul>
+<li>20:25: Loss of backbone link between EWR and ORD</li>
+<li>20:25: Backbone between ATL and IAD is congesting</li>
+<li>21:12 to 21:39: ATL attracted traffic from across the backbone</li>
+<li>21:39 to 21:47: ATL dropped from the backbone, service restored</li>
+<li>21:47 to 22:10: Core congestion caused some logs to drop, edge continues operating</li>
+<li>22:10: Full recovery, including logs and metrics</li>
+</ul>
+<p>Here’s a view of the impact from Cloudflare’s internal traffic manager tool. The red and orange region at the top shows CPU utilization in Atlanta reaching overload, and the white regions show affected data centers seeing CPU drop to near zero as they were no longer handling traffic. This is the period of the outage.</p>
+<p>Other, unaffected data centers show no change in their CPU utilization during the incident. That’s indicated by the fact that the green color does not change during the incident for those data centers.</p>
+<figure><img src="https://web.archive.org/web/20211016040522im_/https://blog.cloudflare.com/content/images/2020/07/tm.png"></figure><h3>What happened and what we’re doing about it</h3>
+<p>As there was backbone congestion in Atlanta, the team had decided to remove some of Atlanta’s backbone traffic. But instead of removing the Atlanta routes from the backbone, a one line change started leaking all BGP routes into the backbone.</p>
+<pre><code>{master}[edit]
+atl01# show | compare 
+[edit policy-options policy-statement 6-BBONE-OUT term 6-SITE-LOCAL from]
+!       inactive: prefix-list 6-SITE-LOCAL { ... }
+</code></pre>
+<p>The complete term looks like this:</p>
+<pre><code>from {
+    prefix-list 6-SITE-LOCAL;
+}
+then {
+    local-preference 200;
+    community add SITE-LOCAL-ROUTE;
+    community add ATL01;
+    community add NORTH-AMERICA;
+    accept;
+}
+</code></pre>
+<p>This term sets the local-preference, adds some communities, and accepts the routes that match the prefix-list. Local-preference is a transitive property on iBGP sessions (it will be transferred to the next BGP peer). </p>
+<p>The correct change would have been to deactivate the term instead of the prefix-list.</p>
+<p>By removing the prefix-list condition, the router was instructed to send all its BGP routes to all other backbone routers, with an increased local-preference of 200. Unfortunately at the time, local routes that the edge routers received from our compute nodes had a local-preference of 100. As the higher local-preference wins, all of the traffic meant for local compute nodes went to Atlanta compute nodes instead. </p>
+<p>With the routes sent out, Atlanta started attracting traffic from across the backbone.</p>
+<p>We are making the following changes:</p>
+<ul>
+<li>Introduce a maximum-prefix limit on our backbone BGP sessions - this would have shut down the backbone in Atlanta, but our network is built to function properly without a backbone. This change will be deployed on Monday, July 20.</li>
+<li>Change the BGP local-preference for local server routes. This change will prevent a single location from attracting other locations’ traffic in a similar manner. This change has been deployed following the incident.</li>
+</ul>
+<h3>Conclusion</h3>
+<p>We’ve never experienced an outage on our backbone and our team responded quickly to restore service in the affected locations, but this was a very painful period for everyone involved. We are sorry for the disruption to our customers and to all the users who were unable to access Internet properties while the outage was happening.</p>
+<p>We’ve already made changes to the backbone configuration to make sure that this cannot happen again, and further changes will resume on Monday.</p>
+            </div>
+        </section>
+        <div>
+            <div>
+                <a title="Discuss on Twitter" href="https://web.archive.org/web/20211016040522/https://twitter.com/Cloudflare">
+                    <span>Discuss on Twitter</span>
+                </a>
+                <a title="Discuss on Hacker News" href="https://web.archive.org/web/20211016040522/https://hn.algolia.com/?dateRange=all&amp;page=0&amp;prefix=false&amp;query=blog.cloudflare.com&amp;sort=byDate&amp;type=story">
+                    <span>Discuss on Hacker News</span>
+                </a>
+                <a title="Discuss on Reddit" href="https://web.archive.org/web/20211016040522/https://www.reddit.com/r/CloudFlare/">
+                    <span>Discuss on Reddit</span>
+                </a>
+            </div>
+        </div>
+
+        <a href="/web/20211016040522/https://blog.cloudflare.com/tag/postmortem/">Post Mortem</a>
+        <a href="/web/20211016040522/https://blog.cloudflare.com/tag/outage/">Outage</a>
+        <a href="/web/20211016040522/https://blog.cloudflare.com/tag/engineering/">Engineering</a>
+    </article>
+</main>
+
+    <div>
+        <div>
+            <div>
+                <p>Follow on Twitter</p>
+            </div>  
+                    <div>
+                        <span>John Graham-Cumming</span>
+                        <span>|</span><a href="https://web.archive.org/web/20211016040522/https://twitter.com/@jgrahamc">@jgrahamc </a>
+                    </div>
+            <div>
+                <span>Cloudflare</span>
+                <span>|</span><a href="https://web.archive.org/web/20211016040522/https://twitter.com/Cloudflare">Cloudflare</a>
+            </div>
+        </div>
+    </div>
+
+<div>
+    <div>
+        <p>Related Posts</p>
+    </div>
+                <article>
+                    <p>October 27, 2016 1:10PM</p>
+                    <a href="/web/20211016040522/https://blog.cloudflare.com/how-the-dyn-outage-affected-cloudflare/">
+                        <h2>How the Dyn outage affected Cloudflare</h2>
+                    </a>
+                    <p>Last Friday the popular DNS service Dyn suffered three waves of DDoS attacks that affected users first on the East Coast of the US, and later users worldwide....</p>
+                    <ul>
+                        <span>By </span>
+                        <li>
+                            <div>
+                                
+                                <a href="/web/20211016040522/https://blog.cloudflare.com/author/john-graham-cumming/">John Graham-Cumming</a>
+                            </div>
+                        </li>
+                    </ul>
+                    <div>
+                        
+                        <a href="/web/20211016040522/https://blog.cloudflare.com/tag/dns/">DNS</a>
+                        <span>, </span>
+                        <a href="/web/20211016040522/https://blog.cloudflare.com/tag/ddos/">DDoS</a>
+                        <span>, </span>
+                        <a href="/web/20211016040522/https://blog.cloudflare.com/tag/attacks/">Attacks</a>
+                        <span>, </span>
+                        <a href="/web/20211016040522/https://blog.cloudflare.com/tag/outage/">Outage</a>
+                        <span>, </span>
+                        <a href="/web/20211016040522/https://blog.cloudflare.com/tag/reliability/">Reliability</a>
+                    </div>
+                </article>
+                <article>
+                    <p>November 06, 2012 9:09AM</p>
+                    <a href="/web/20211016040522/https://blog.cloudflare.com/why-google-went-offline-today-and-a-bit-about/">
+                        <h2>Why Google Went Offline Today and a Bit about How the Internet Works</h2>
+                    </a>
+                    <p>Today, Google's services experienced a limited outage for about 27 minutes over some portions of the Internet. The reason this happened dives into the deep, dark corners of networking....</p>
+                    <ul>
+                        <span>By </span>
+                        <li>
+                            <div>
+                                
+                                <a href="/web/20211016040522/https://blog.cloudflare.com/author/tom-paseka/">Tom Paseka</a>
+                            </div>
+                        </li>
+                    </ul>
+                    <div>
+                        
+                        <a href="/web/20211016040522/https://blog.cloudflare.com/tag/network/">Network</a>
+                        <span>, </span>
+                        <a href="/web/20211016040522/https://blog.cloudflare.com/tag/bgp/">BGP</a>
+                        <span>, </span>
+                        <a href="/web/20211016040522/https://blog.cloudflare.com/tag/outage/">Outage</a>
+                        <span>, </span>
+                        <a href="/web/20211016040522/https://blog.cloudflare.com/tag/google/">Google</a>
+                        <span>, </span>
+                        <a href="/web/20211016040522/https://blog.cloudflare.com/tag/reliability/">Reliability</a>
+                    </div>
+                </article>
+                <article>
+                    <p>October 08, 2021 4:16PM</p>
+                    <a href="/web/20211016040522/https://blog.cloudflare.com/during-the-facebook-outage/">
+                        <h2>What happened on the Internet during the Facebook outage</h2>
+                    </a>
+                    <p>Today, we're going to show you how the Facebook and affiliate sites downtime affected us, and what we can see in our data....</p>
+                    <ul>
+                        <span>By </span>
+                        <li>
+                            <div>
+                                
+                                <a href="/web/20211016040522/https://blog.cloudflare.com/author/celso/">Celso Martinho</a>
+                            </div>
+                        </li>
+                        <li>
+                            <div>
+                                <span>, </span>
+                                <a href="/web/20211016040522/https://blog.cloudflare.com/author/sabina/">Sabina Zejnilovic</a>
+                            </div>
+                        </li>
+                    </ul>
+                    <div>
+                        
+                        <a href="/web/20211016040522/https://blog.cloudflare.com/tag/outage/">Outage</a>
+                        <span>, </span>
+                        <a href="/web/20211016040522/https://blog.cloudflare.com/tag/facebook-2/">Facebook</a>
+                        <span>, </span>
+                        <a href="/web/20211016040522/https://blog.cloudflare.com/tag/bgp/">BGP</a>
+                        <span>, </span>
+                        <a href="/web/20211016040522/https://blog.cloudflare.com/tag/dns/">DNS</a>
+                        <span>, </span>
+                        <a href="/web/20211016040522/https://blog.cloudflare.com/tag/trends/">Trends</a>
+                    </div>
+                </article>
+                <article>
+                    <p>October 04, 2021 10:08PM</p>
+                    <a href="/web/20211016040522/https://blog.cloudflare.com/october-2021-facebook-outage/">
+                        <h2>Understanding How Facebook Disappeared from the Internet</h2>
+                    </a>
+                    <p>Today at 1651 UTC, we opened an internal incident entitled "Facebook DNS lookup returning SERVFAIL" because we were worried that something was wrong with our DNS resolver 1.1.1.1.  But as we were about to post on our public status page we realized something else more serious was going on....</p>
+                    <ul>
+                        <span>By </span>
+                        <li>
+                            <div>
+                                
+                                <a href="/web/20211016040522/https://blog.cloudflare.com/author/celso/">Celso Martinho</a>
+                            </div>
+                        </li>
+                        <li>
+                            <div>
+                                <span>, </span>
+                                <a href="/web/20211016040522/https://blog.cloudflare.com/author/tom-strickx/">Tom Strickx</a>
+                            </div>
+                        </li>
+                    </ul>
+                    <div>
+                        
+                        <a href="/web/20211016040522/https://blog.cloudflare.com/tag/trends/">Trends</a>
+                        <span>, </span>
+                        <a href="/web/20211016040522/https://blog.cloudflare.com/tag/outage/">Outage</a>
+                        <span>, </span>
+                        <a href="/web/20211016040522/https://blog.cloudflare.com/tag/bgp/">BGP</a>
+                        <span>, </span>
+                        <a href="/web/20211016040522/https://blog.cloudflare.com/tag/dns/">DNS</a>
+                        <span>, </span>
+                        <a href="/web/20211016040522/https://blog.cloudflare.com/tag/facebook/">Facebook</a>
+                    </div>
+                </article>
+</div>
+
+
+
+
+        <footer>
+  <div>
+    <div>
+      <div>
+        <ul>
+          <li>
+            Sales
+            </li>
+          <li>
+            <a href="https://web.archive.org/web/20211016040522/https://cloudflare.com/plans/enterprise/contact/">
+              Enterprise Sales
+            </a>
+          </li>
+          <li>
+            <a href="https://web.archive.org/web/20211016040522/https://cloudflare.com/partners/">
+              Become a Partner
+            </a>
+          </li>
+        </ul>
+        <p>Contact Sales:</p>
+          <p><a href="https://web.archive.org/web/20211016040522/tel:+18889935273">+1
+              (888) 99 FLARE</a></p>
+
+          </div>
+      <div>
+        <ul>
+          <li>
+            Getting Started
+            </li>
+          <li>
+            <a href="https://web.archive.org/web/20211016040522/https://cloudflare.com/plans/">
+              Pricing
+            </a>
+          </li>
+          <li>
+            <a href="https://web.archive.org/web/20211016040522/https://cloudflare.com/case-studies/">
+              Case Studies
+            </a>
+          </li>
+          <li>
+            <a href="https://web.archive.org/web/20211016040522/https://cloudflare.com/resources/">
+              White Papers
+            </a>
+          </li>
+          <li>
+            <a href="https://web.archive.org/web/20211016040522/https://cloudflare.com/webinars/">
+              Webinars
+            </a>
+          </li>
+          <li>
+            <a href="https://web.archive.org/web/20211016040522/https://cloudflare.com/learning/">
+              Learning Center
+            </a>
+          </li>
+        </ul>
+      </div>
+      <div>
+        <ul>
+          <li>
+            Community
+            </li>
+          <li>
+            <a href="https://web.archive.org/web/20211016040522/https://community.cloudflare.com/">
+              Community Hub
+            </a>
+          </li>
+          <li>
+            <a href="https://web.archive.org/web/20211016040522/https://blog.cloudflare.com/">
+              Blog
+            </a>
+          </li>
+          <li>
+            <a href="https://web.archive.org/web/20211016040522/https://cloudflare.com/galileo/">
+              Project Galileo
+            </a>
+          </li>
+          <li>
+            <a href="https://web.archive.org/web/20211016040522/https://cloudflare.com/athenian/">
+              Athenian Project
+            </a>
+          </li>
+          <li>
+            <a href="https://web.archive.org/web/20211016040522/https://cloudflare.tv/">
+              Cloudflare TV
+            </a>
+          </li>
+        </ul>
+      </div>
+      <div>
+        <ul>
+          <li>
+            Developers
+            </li>
+          <li>
+            <a href="https://web.archive.org/web/20211016040522/https://developers.cloudflare.com/">
+              Developer Hub
+            </a>
+          </li>
+          <li>
+            <a href="https://web.archive.org/web/20211016040522/https://cloudflare.com/technical-resources/">
+              Technical Resources
+            </a>
+          </li>
+          <li>
+            <a href="https://web.archive.org/web/20211016040522/https://cloudflare.com/products/cloudflare-workers/">
+              Cloudflare Workers
+            </a>
+          </li>
+          <li>
+            <a href="https://web.archive.org/web/20211016040522/https://cloudflare.com/integrations/">
+              Integrations
+            </a>
+          </li>
+        </ul>
+      </div>
+      <div>
+        <ul>
+          <li>
+            Support
+            </li>
+          <li>
+            <a href="https://web.archive.org/web/20211016040522/https://support.cloudflare.com/">
+              Support
+            </a>
+          </li>
+          <li>
+            <a href="https://web.archive.org/web/20211016040522/https://www.cloudflarestatus.com/">
+              Cloudflare Status
+            </a>
+          </li>
+          <li>
+            <a href="https://web.archive.org/web/20211016040522/https://cloudflare.com/compliance/">
+              Compliance
+            </a>
+          </li>
+          <li>
+            <a href="https://web.archive.org/web/20211016040522/https://cloudflare.com/gdpr/introduction/">
+              GDPR
+            </a>
+          </li>
+        </ul>
+      </div>
+      <div>
+        <ul>
+          <li>
+            Company
+            </li>
+          <li>
+            <a href="https://web.archive.org/web/20211016040522/https://cloudflare.com/about-overview/">
+              About Cloudflare
+            </a>
+          </li>
+          <li>
+            <a href="https://web.archive.org/web/20211016040522/https://cloudflare.com/people/">
+              Our Team
+            </a>
+          </li>
+          <li>
+            <a href="https://web.archive.org/web/20211016040522/https://cloudflare.com/press/">
+              Press
+            </a>
+          </li>
+          <li>
+            <a href="https://web.archive.org/web/20211016040522/https://cloudflare.com/analysts/">
+              Analysts
+            </a>
+          </li>
+          <li>
+            <a href="https://web.archive.org/web/20211016040522/https://cloudflare.com/careers/">
+              Careers
+            </a>
+          </li>
+          <li>
+            <a href="https://web.archive.org/web/20211016040522/https://cloudflare.com/internetsummit/">
+              Internet Summit
+            </a>
+          </li>
+          <li>
+            <a href="https://web.archive.org/web/20211016040522/https://cloudflare.com/logo/">
+              Logo
+            </a>
+          </li>
+          <li>
+            <a href="https://web.archive.org/web/20211016040522/https://cloudflare.com/network/">
+              Network Map
+            </a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div>
+    <div>
+      <div>
+        <a href="https://web.archive.org/web/20211016040522/https://www.facebook.com/Cloudflare/"><img src="https://web.archive.org/web/20211016040522im_/https://cloudflare.com/img/footer/facebook.svg"></a>
+        <a href="https://web.archive.org/web/20211016040522/https://twitter.com/Cloudflare"><img src="https://web.archive.org/web/20211016040522im_/https://cloudflare.com/img/footer/twitter.svg"></a>
+        <a href="https://web.archive.org/web/20211016040522/https://www.linkedin.com/company/cloudflare"><img src="https://web.archive.org/web/20211016040522im_/https://cloudflare.com/img/footer/linkedin.svg"></a>
+        <a href="https://web.archive.org/web/20211016040522/https://www.youtube.com/cloudflare"><img src="https://web.archive.org/web/20211016040522im_/https://cloudflare.com/img/footer/youtube.svg"></a>
+        <a href="https://web.archive.org/web/20211016040522/https://www.instagram.com/cloudflare"><img src="https://web.archive.org/web/20211016040522im_/https://cloudflare.com/img/footer/instagram.svg"></a>
+      </div>
+      <div>
+        <div>
+          <span>© 2020 Cloudflare, Inc.</span>
+          <span>|</span>
+          <a href="https://web.archive.org/web/20211016040522/https://cloudflare.com/privacypolicy/">Privacy
+            Policy</a>
+          <span>|</span>
+          <a href="https://web.archive.org/web/20211016040522/https://cloudflare.com/website-terms/">Terms of Use</a>
+          <span>|</span>
+          <a href="https://web.archive.org/web/20211016040522/https://cloudflare.com/abuse/">Trust &amp; Safety</a>
+          <span>|</span>
+          <a href="https://web.archive.org/web/20211016040522/https://cloudflare.com/trademark/">Trademark</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</footer>    </div>
+
+
+    <!-- Google Tag Manager (noscript) -->
+<!-- End Google Tag Manager (noscript) -->
+<img alt="" src="https://web.archive.org/web/20211016040522im_/https://cdn.bizible.com/m/ipv?_biz_r=&amp;_biz_h=800054037&amp;_biz_u=da68d2e9ad5441668da91738548939b8&amp;_biz_s=134a3c&amp;_biz_l=https%3A%2F%2Fblog.cloudflare.com%2Fcloudflare-outage-on-july-17-2020%2F&amp;_biz_t=1634357123767&amp;_biz_i=Cloudflare%20outage%20on%20July%2017%2C%202020&amp;_biz_n=0&amp;rnd=33470&amp;cdn_o=a&amp;_biz_z=1634357123774"><img alt="" src="https://web.archive.org/web/20211016040314/https://cdn.bizibly.com/u?_biz_u=da68d2e9ad5441668da91738548939b8&amp;_biz_s=134a3c&amp;_biz_l=https%3A%2F%2Fblog.cloudflare.com%2Fcloudflare-outage-on-july-17-2020%2F&amp;_biz_t=1634357123775&amp;_biz_i=Cloudflare%20outage%20on%20July%2017%2C%202020&amp;rnd=290110&amp;cdn_o=a&amp;_biz_z=1634357123775">
+</body>
+</html>

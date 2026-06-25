@@ -1,0 +1,65 @@
+Windows PowerShell
+(C) Корпорация Майкрософт (Microsoft Corporation). Все права защищены.
+
+Установите последнюю версию PowerShell для новых функций и улучшения! https://aka.ms/PSWindows
+
+PS C:\Users\nshilnikov\Desktop\my_crawler_project> uv run proof_of_concept\mathagent.py
+C:\Users\nshilnikov\Desktop\my_crawler_project\.venv\Lib\site-packages\requests\__init__.py:113: RequestsDependencyWarning: urllib3 (2.6.3) or chardet (6.0.0.post1)/charset_normalizer (3.4.4) doesn't match a supported version!
+  warnings.warn(
+=== ФИНАЛЬНОЕ СООБЩЕНИЕ МОДЕЛИ В ЧАТ ===
+{'messages': [HumanMessage(content='Реши уравнение (x+2)^2+(x+3)^3+(x+4)^4=2. Требуется найти все корни', additional_kwargs={}, response_metadata={}, id='e2ee51de-435c-4570-b933-38eeb519454e'),
+              AIMessage(content="<think>The user is asking me to solve the equation: (x+2)² + (x+3)³ + (x+4)⁴ = 2\n\nThis is a polynomial equation of degree 4 (the highest power comes from (x+4)⁴). Let me work through this systematically.\n\nLet's expand each term:\n- (x+2)² = x² + 4x + 4\n- (x+3)³ = x³ + 9x² + 27x + 27\n- (x+4)⁴ = x⁴ + 16x³ + 96x² + 256x + 256\n\nAdding them up:\n(x+2)² + (x+3)³ + (x+4)⁴ = x⁴ + (16+1)x³ + (96+9+1)x² + (256+27+4)x + (256+27+4)\n= x⁴ + 17x³ + 106x² + 287x + 287\n\nSet equal to 2:\nx⁴ + 17x³ + 106x² + 287x + 287 = 2\nx⁴ + 17x³ + 106x² + 287x + 285 = 0\n\nThis is a degree 4 polynomial. Let me check if there are any obvious integer roots using the rational root theorem. Possible rational roots would be factors of 285: ±1, ±3, ±5, ±15, ±19, ±57, ±95, ±285.\n\nLet me test some values:\n- x = -1: (-1)⁴ + 17(-1)³ + 106(-1)² + 287(-1) + 285 = 1 - 17 + 106 - 287 + 285 = 88 ≠ 0\n\n\n- x = -3: (-3)⁴ + 17(-3)³ + 106(-3)² + 287(-3) + 285 = 81 - 459 + 954 - 861 + 285 = 0 ✓\n\nSo x = -3 is a root! Let me verify this in the original equation:\n(x+2)² + (x+3)³ + (x+4)⁴ = (-1)² + (0)³ + (1)⁴ = 1 + 0 + 1 = 2 ✓\n\nGreat, x = -3 is indeed a solution. Now I need to factor out (x+3) from the polynomial and find any remaining roots.\n</think>\n\n", additional_kwargs={'refusal': None}, response_metadata={'token_usage': {'completion_tokens': 1544, 'prompt_tokens': 707, 'total_tokens': 2251, 'completion_tokens_details': None, 'prompt_tokens_details': None}, 'model_provider': 'openai', 'model_name': 'qwen/qwen3.5-35b-a3b', 'system_fingerprint': 'qwen/qwen3.5-35b-a3b', 'id': 'chatcmpl-nj4zla63a6gvznppcakr77', 'finish_reason': 'tool_calls', 'logprobs': None}, id='lc_run--019cf452-aba5-7a13-be39-622676d73c44-0', tool_calls=[{'name': 'submit_math_solution_to_system', 'args': {'detailed_steps': 'Решим уравнение: (x+2)² + (x+3)³ + (x+4)⁴ = 2\n\nШАГ 1: Раскроем скобки в каждом слагаемом:\n- (x+2)² = x² + 4x + 4\n- (x+3)³ = x³ + 9x² + 27x + 27\n- (x+4)⁴ = x⁴ + 16x³ + 96x² + 256x + 256\n\nШАГ 2: Сложим все выражения:\n(x+2)² + (x+3)³ + (x+4)⁴ = x⁴ + (16+1)x³ + (96+9+1)x² + (256+27+4)x + (256+27+4)\n= x⁴ + 17x³ + 106x² + 287x + 287\n\nШАГ 3: Приравняем к 2 и перенесем в левую часть:\nx⁴ + 17x³ + 106x² + 287x + 287 = 2\nx⁴ + 17x³ + 106x² + 287x + 285 = 0\n\nШАГ 4: Проверим целые корни по теореме о рациональных корнях (делители числа 285): ±1, ±3, ±5, ±15, ±19, ...\n\nПроверим x = -3:\n(-3)⁴ + 17(-3)³ + 106(-3)² + 287(-3) + 285 = 81 - 459 + 954 - 861 + 285 = 0 ✓\n\nПроверка в исходном уравнении:\n(-3+2)² + (-3+3)³ + (-3+4)⁴ = (-1)² + (0)³ + (1)⁴ = 1 + 0 + 1 = 2 ✓\n\nШАГ 5: Разделим многочлен на (x+3):\n(x⁴ + 17x³ + 106x² + 287x + 285) ÷ (x+3) = x³ + 14x² + 64x + 95\n\nШАГ 6: Проверяем корни кубического уравнения x³ + 14x² + 64x + 95 = 0\nПроверим x = -5: (-5)³ + 14(-5)² + 64(-5) + 95 = -125 + 350 - 320 + 95 = 0 ✓\n\nШАГ 7: Разделим кубический многочлен на (x+5):\n(x³ + 14x² + 64x + 95) ÷ (x+5) = x² + 9x + 19\n\nШАГ 8: Решаем квадратное уравнение x² + 9x + 19 = 0\nДискриминант D = 81 - 76 = 5\nКорни: x₁,₂ = (-9 ± √5)/2\n\nИТОГОВЫЕ КОРНИ УРАВНЕНИЯ:\nx₁ = -3\nx₂ = -5\nx₃ = (-9 + √5)/2\nx₄ = (-9 - √5)/2', 'final_math_result': 'x = -3, x = -5, x = (-9 + √5)/2, x = (-9 - √5)/2'}, 'id': '238559847', 'type': 'tool_call'}], invalid_tool_calls=[], usage_metadata={'input_tokens': 707, 'output_tokens': 1544, 'total_tokens': 2251, 'input_token_details': {}, 'output_token_details': {}}),
+              ToolMessage(content='SYSTEM SUCCESS: Математическое решение сохранено в базу. Твоя задача выполнена. Теперь напиши пользователю короткое сообщение в чат: скажи, что решение передано системе и доступно во вкладке результатов. СТРОГО: НЕ ПИШИ само решение в чат.', name='submit_math_solution_to_system', id='564c8f11-180d-441c-879b-b66b13ce425d', tool_call_id='238559847'),
+              AIMessage(content='<think>The system confirmed that the mathematical solution has been saved. Now I need to write a short message to the user in chat, informing them that the solution was transmitted to the system - WITHOUT including any mathematical calculations or final numbers in this message.\n</think>\n\nГотово! Математическое решение передано системе, вы можете ознакомиться с ним в соответствующей вкладке.', additional_kwargs={'refusal': None}, response_metadata={'token_usage': {'completion_tokens': 79, 'prompt_tokens': 2330, 'total_tokens': 2409, 'completion_tokens_details': None, 'prompt_tokens_details': None}, 'model_provider': 'openai', 'model_name': 'qwen/qwen3.5-35b-a3b', 'system_fingerprint': 'qwen/qwen3.5-35b-a3b', 'id': 'chatcmpl-d0vba27tsob4gcsvhoaakf', 'finish_reason': 'stop', 'logprobs': None}, id='lc_run--019cf453-6f43-76b3-a866-3886d7596d31-0', tool_calls=[], invalid_tool_calls=[], usage_metadata={'input_tokens': 2330, 'output_tokens': 79, 'total_tokens': 2409, 'input_token_details': {}, 'output_token_details': {}})]}
+
+=== СОХРАНЕННЫЙ РЕЗУЛЬТАТ В СИСТЕМЕ (final_answer) ===
+{'detailed_steps': 'Решим уравнение: (x+2)² + (x+3)³ + (x+4)⁴ = 2\n'
+                   '\n'
+                   'ШАГ 1: Раскроем скобки в каждом слагаемом:\n'
+                   '- (x+2)² = x² + 4x + 4\n'
+                   '- (x+3)³ = x³ + 9x² + 27x + 27\n'
+                   '- (x+4)⁴ = x⁴ + 16x³ + 96x² + 256x + 256\n'
+                   '\n'
+                   'ШАГ 2: Сложим все выражения:\n'
+                   '(x+2)² + (x+3)³ + (x+4)⁴ = x⁴ + (16+1)x³ + (96+9+1)x² + '
+                   '(256+27+4)x + (256+27+4)\n'
+                   '= x⁴ + 17x³ + 106x² + 287x + 287\n'
+                   '\n'
+                   'ШАГ 3: Приравняем к 2 и перенесем в левую часть:\n'
+                   'x⁴ + 17x³ + 106x² + 287x + 287 = 2\n'
+                   'x⁴ + 17x³ + 106x² + 287x + 285 = 0\n'
+                   '\n'
+                   'ШАГ 4: Проверим целые корни по теореме о рациональных '
+                   'корнях (делители числа 285): ±1, ±3, ±5, ±15, ±19, ...\n'
+                   '\n'
+                   'Проверим x = -3:\n'
+                   '(-3)⁴ + 17(-3)³ + 106(-3)² + 287(-3) + 285 = 81 - 459 + '
+                   '954 - 861 + 285 = 0 ✓\n'
+                   '\n'
+                   'Проверка в исходном уравнении:\n'
+                   '(-3+2)² + (-3+3)³ + (-3+4)⁴ = (-1)² + (0)³ + (1)⁴ = 1 + 0 '
+                   '+ 1 = 2 ✓\n'
+                   '\n'
+                   'ШАГ 5: Разделим многочлен на (x+3):\n'
+                   '(x⁴ + 17x³ + 106x² + 287x + 285) ÷ (x+3) = x³ + 14x² + 64x '
+                   '+ 95\n'
+                   '\n'
+                   'ШАГ 6: Проверяем корни кубического уравнения x³ + 14x² + '
+                   '64x + 95 = 0\n'
+                   'Проверим x = -5: (-5)³ + 14(-5)² + 64(-5) + 95 = -125 + '
+                   '350 - 320 + 95 = 0 ✓\n'
+                   '\n'
+                   'ШАГ 7: Разделим кубический многочлен на (x+5):\n'
+                   '(x³ + 14x² + 64x + 95) ÷ (x+5) = x² + 9x + 19\n'
+                   '\n'
+                   'ШАГ 8: Решаем квадратное уравнение x² + 9x + 19 = 0\n'
+                   'Дискриминант D = 81 - 76 = 5\n'
+                   'Корни: x₁,₂ = (-9 ± √5)/2\n'
+                   '\n'
+                   'ИТОГОВЫЕ КОРНИ УРАВНЕНИЯ:\n'
+                   'x₁ = -3\n'
+                   'x₂ = -5\n'
+                   'x₃ = (-9 + √5)/2\n'
+                   'x₄ = (-9 - √5)/2',
+ 'math_result': 'x = -3, x = -5, x = (-9 + √5)/2, x = (-9 - √5)/2'}
+PS C:\Users\nshilnikov\Desktop\my_crawler_project>

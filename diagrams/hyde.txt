@@ -1,0 +1,25 @@
+graph TD
+    User["👤 Запрос: Что будет, если Nginx упадет?"] --> Agent["🤖 LangGraph Agent"]
+
+    subgraph "Генерация гипотетического инцидента (search_incidents_hyde)"
+        Agent -->|LLM фантазирует идеальный ответ| Fields
+        
+        subgraph Fields ["Поля псевдо-документа (Schema)"]
+            direction TB
+            F1["🏢 1. company"]
+            F2["📝 2. short_description"]
+            F3["🔥 3. symptoms"]
+            F4["💀 4. root_cause"]
+            F5["🛠 5. resolution"]
+            F6["🎓 6. lessons_learned"]
+        end
+
+        F1 & F2 & F3 & F4 & F5 & F6 -->|Склеивание текста| ConcatText["📄 Итоговый текст (HyDE Query Text)"]
+    end
+
+    ConcatText -->|Запрос в API| EmbeddingModel["🧠 OpenAI Embeddings"]
+    
+    EmbeddingModel -->|Вектор массива чисел| Qdrant["🗄️ Qdrant Vector DB: Ищет похожие векторы"]
+    
+    Qdrant -->|Ближайшие соседи KNN| Results["✅ Топ-5 реальных инцидентов"]
+    Results -.-> Agent

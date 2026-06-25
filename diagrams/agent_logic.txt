@@ -1,0 +1,31 @@
+flowchart TD
+    START["Запрос пользователя"] --> RU["research_update<br/>краткое пояснение пользователю"]
+
+    RU --> DECIDE{"Тип запроса?"}
+
+    DECIDE -->|Прямой технический запрос| SI["search_incidents"]
+    DECIDE -->|Сценарий / гипотеза / паттерн| SH["search_incidents_hyde"]
+
+    SI --> SHORT["Получение shortlist похожих инцидентов"]
+    SH --> SHORT
+
+    SHORT --> CHECK{"Достаточно ли релевантных результатов?"}
+
+    CHECK -->|Нет| RELAX["Ослабить фильтры / изменить стратегию поиска"]
+    RELAX --> SI
+
+    CHECK -->|Да| DETAILS["get_incident_details<br/>для 1-3 лучших документов"]
+
+    DETAILS --> MD{"Markdown обрезан?"}
+    MD -->|Да| CHUNK["get_incident_markdown_chunk"]
+    MD -->|Нет| ANALYZE["Анализ найденных инцидентов"]
+
+    CHUNK --> ANALYZE
+
+    ANALYZE --> REPORT{"Нужен ли структурированный отчёт?"}
+
+    REPORT -->|Да| SAVE["save_final_report"]
+    REPORT -->|Нет| ANSWER["Обычный ответ пользователю"]
+
+    SAVE --> FINAL["Финальный ответ + artifact preview"]
+    ANSWER --> FINAL

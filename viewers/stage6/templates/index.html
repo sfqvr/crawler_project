@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Stage 6 Metadata Viewer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <h1>Stage 6 Viewer</h1>
+        <div id="metaSummary" class="muted">Loading...</div>
+      </div>
+
+      <section class="panel">
+        <h2>Filters</h2>
+
+        <div class="field">
+          <label for="searchInput">Search (inc. Stage 6 content)</label>
+          <input id="searchInput" type="text" placeholder="name, tech stack, company...">
+        </div>
+
+        <div class="field checkbox-field">
+          <label>
+            <input id="onlyWithMarkdown" type="checkbox">
+            Only pages with markdown
+          </label>
+        </div>
+
+        <div class="field checkbox-field" style="display:none;">
+          <label>
+            <input id="onlyStage4Relevant" type="checkbox">
+            Only stage4 relevant
+          </label>
+        </div>
+
+        <div class="field" style="display:none;">
+          <label for="stage4Status">Stage4 status</label>
+          <select id="stage4Status">
+            <option value="all">all</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="stage5Status">Stage5 status</label>
+          <select id="stage5Status">
+            <option value="all">all</option>
+            <option value="null">null</option>
+            <option value="success">success</option>
+            <option value="failed">failed</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="stage6Status">Stage6 status</label>
+          <select id="stage6Status">
+            <option value="all">all</option>
+            <option value="null">null</option>
+            <option value="success">success</option>
+            <option value="failed">failed</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <div class="label-with-hint">
+            <label>Document kind</label>
+          </div>
+          <div id="documentKinds" class="checkbox-group"></div>
+        </div>
+
+        <div class="button-row">
+          <button id="applyFiltersBtn" type="button">Apply filters</button>
+          <button id="resetFiltersBtn" type="button" class="secondary">Reset</button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="list-header">
+          <h2>Documents</h2>
+          <div id="filteredCount" class="muted">0 / 0</div>
+        </div>
+
+        <div class="button-row nav-row">
+          <button id="prevBtn" type="button" class="secondary">⬅ Prev</button>
+          <button id="nextBtn" type="button" class="secondary">Next ➡</button>
+        </div>
+
+        <div id="documentList" class="document-list"></div>
+      </section>
+    </aside>
+
+    <main class="main">
+      <section id="emptyState" class="panel empty-state hidden">
+        <h2>No rows match current filters</h2>
+      </section>
+
+      <section id="contentSection" class="hidden">
+        <div class="page-header">
+          <div>
+            <h2 id="docTitle">—</h2>
+            <div class="muted" id="docSubtitle">—</div>
+          </div>
+          <div class="button-row">
+            <a id="sourceUrlBtn" href="#" target="_blank" rel="noopener noreferrer" class="button-link">Open source URL</a>
+          </div>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-label">Filtered index</div>
+            <div id="statFilteredIndex" class="stat-value">—</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Document kind</div>
+            <div id="statDocumentKind" class="stat-value">—</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Stage4 status</div>
+            <div id="statStage4Status" class="stat-value">—</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Stage5 status</div>
+            <div id="statStage5Status" class="stat-value">—</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Stage6 status</div>
+            <div id="statStage6Status" class="stat-value">—</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Markdown length</div>
+            <div id="statMarkdownLength" class="stat-value">—</div>
+          </div>
+        </div>
+
+        <div class="badges" id="badges"></div>
+
+        <div class="tabs">
+          <button class="tab-button active" data-tab="stage6">Stage 6 Data</button>
+          <button class="tab-button" data-tab="rendered">Rendered Markdown</button>
+          <button class="tab-button" data-tab="raw">Raw Markdown</button>
+          <button class="tab-button" data-tab="metadata">Raw DB JSON</button>
+        </div>
+
+        <section id="tab-stage6" class="tab-panel active">
+          <div class="panel">
+            <h3>Extracted LLM Metadata</h3>
+            <pre id="stage6Data" style="color: #6ee7b7;"></pre>
+          </div>
+        </section>
+
+        <section id="tab-rendered" class="tab-panel">
+          <div id="renderedMarkdown" class="panel rendered-markdown"></div>
+        </section>
+
+        <section id="tab-raw" class="tab-panel">
+          <div class="panel">
+            <pre id="rawMarkdown"></pre>
+          </div>
+        </section>
+
+        <section id="tab-html" class="tab-panel" style="display: none;">
+            <div class="panel">
+            <pre id="cleanedHtml"></pre>
+          </div>
+        </section>
+
+        <section id="tab-metadata" class="tab-panel">
+          <div class="metadata-grid">
+            <div class="panel">
+              <h3>Quick metadata</h3>
+              <pre id="quickMetadata"></pre>
+            </div>
+            <div class="panel">
+              <h3>Full row JSON</h3>
+              <pre id="fullMetadata"></pre>
+            </div>
+          </div>
+        </section>
+      </section>
+    </main>
+  </div>
+
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>

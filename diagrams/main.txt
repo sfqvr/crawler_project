@@ -1,0 +1,59 @@
+graph TD
+    subgraph "Точки входа (Интерфейсы)"
+        UI[Web UI / Frontend]
+        CLI[run_agent.py / CLI]
+    end
+
+    subgraph "Backend (flask_app.py)"
+        API["Flask API (/api/chat)"]
+        HistoryFormatter[Форматирование истории и UI-сообщений]
+    end
+
+    subgraph "Ядро Агента (agent.py & langgraph)"
+        LangGraph[LangGraph Agent Engine]
+        LLM[OpenAI LLM gpt-4o-mini]
+        Prompts[Системный промпт / Политики]
+        Checkpointer[(InMemorySaver - Память диалога)]
+        Store[(InMemoryStore - Хранилище отчетов)]
+    end
+
+    subgraph "Инструменты Агента (tools.py)"
+        T_Update[research_update<br>UX уведомления]
+        T_Search[search_incidents<br>Прямой поиск]
+        T_HyDE[search_incidents_hyde<br>Поиск по гипотезе]
+        T_Details[get_incident_details<br>Превью документа]
+        T_Chunk[get_incident_markdown_chunk<br>Чтение по частям]
+        T_Save[save_final_report<br>Сохранение артефакта]
+    end
+
+    subgraph "Поисковый движок (QdrantSearchAPI)"
+        Embeddings[OpenAI Embeddings]
+        Qdrant[(Qdrant Vector DB)]
+    end
+
+    %% Связи
+    UI --> API
+    API --> HistoryFormatter
+    HistoryFormatter --> LangGraph
+    CLI --> LangGraph
+
+    LangGraph <--> LLM
+    LangGraph <--> Prompts
+    LangGraph <--> Checkpointer
+    LangGraph <--> Store
+
+    LangGraph --> T_Update
+    LangGraph --> T_Search
+    LangGraph --> T_HyDE
+    LangGraph --> T_Details
+    LangGraph --> T_Chunk
+    LangGraph --> T_Save
+
+    T_Save -. Сохраняет артефакт .-> Store
+    
+    T_Search --> Embeddings
+    T_HyDE --> Embeddings
+    T_Details --> Qdrant
+    T_Chunk --> Qdrant
+    
+    Embeddings --> Qdrant

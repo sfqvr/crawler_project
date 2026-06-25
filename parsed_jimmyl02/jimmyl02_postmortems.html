@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Собранные Постмортемы</title>
+    <style>
+        body { font-family: system-ui, -apple-system, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; background-color: #f4f6f9; color: #333; }
+        h1 { text-align: center; color: #2c3e50; }
+        .card { background: white; border-radius: 8px; padding: 16px; margin-bottom: 16px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); border-left: 4px solid #3498db; }
+        .card h3 { margin-top: 0; margin-bottom: 8px; }
+        .card a { color: #2980b9; text-decoration: none; font-weight: bold; }
+        .card p { margin: 0; line-height: 1.5; color: #555; }
+    </style>
+</head>
+<body>
+    <h1>🚨 Собранные данные</h1>
+
+    <div class="card">
+        <h3><a href="https://status.openai.com/incidents/6bwlxnvdncnm" target="_blank">High error rates for ChatGPT, APIs, and Sora</a></h3>
+        <p>Azure had a major outage due to a power failure in a datacenter. This caused databases where the primary was located in the affected region to fail. The failover process was elongated due to the size of the databases. As a remediation, there will be work done to improve resiliency for failovers and ensuring they are able to completed much faster.</p>
+    </div>
+    <div class="card">
+        <h3><a href="https://status.openai.com/incidents/ctrsv3lwd797" target="_blank">API, ChatGPT & Sora Facing Issues</a></h3>
+        <p>The release of a new telemetry service caused kubernetes control plane to be overloaded. This caused significant problems as operators could no longer administrate the cluster and eventually DNS caches expired causing service discovery to fail. As a remediation, there will be increased investments in phased rollouts, testing, and decoupling of the data plane and control plane</p>
+    </div>
+    <div class="card">
+        <h3><a href="https://blog.cloudflare.com/major-data-center-power-failure-again-cloudflare-code-orange-tested" target="_blank">Cloudflare Datacenter Outage</a></h3>
+        <p>A power outage at a datacenter which houses much of cloudflare's control plane. After investments in resiliency from a previous datacenter outage, cloudflare's control plane was able to automatically recover with minimal downtime</p>
+    </div>
+    <div class="card">
+        <h3><a href="https://resend.com/blog/incident-report-for-february-21-2024" target="_blank">Resend Core Outage</a></h3>
+        <p>A failed database migration caused the production tables to be dropped. These were slowly recovered from backups during which the API was unavailable. The resolution was to increase database resources to increase the speed of recovery.</p>
+    </div>
+    <div class="card">
+        <h3><a href="https://status.openai.com/incidents/ssg8fh7sfyz3" target="_blank">OpenAI ChaGPT Unexpected Responses</a></h3>
+        <p>Due to a bad kernel deployment, specific GPU configurations would cause incorrect outputs to be returned which resulted in incorrect and incoherent tokens to be returned</p>
+    </div>
+    <div class="card">
+        <h3><a href="https://status.openai.com/incidents/00fpy0yxrx1q" target="_blank">OpenAI API Outage</a></h3>
+        <p>Due to an increase in traffic, routing nodes faced memory issues due to a memory expensive operations which created GC pressure. The resolution was to reuse a memory buffer as well as implement load shedding capabilities.</p>
+    </div>
+    <div class="card">
+        <h3><a href="https://discord.com/blog/authentication-outage" target="_blank">Dicsord Authentication Outage</a></h3>
+        <p>Due to planned maintainence + hardware failure, a syclladb cluster responsible for authentication suffered degraded performance. Other factors like low row cache hit rates and a retry storm further exacerbated the issue. The resolution was to wait for the healthy zone to complete its rebuild to regain quorum.</p>
+    </div>
+    <div class="card">
+        <h3><a href="https://blog.cloudflare.com/post-mortem-on-cloudflare-control-plane-and-analytics-outage/" target="_blank">Cloudflare Control Plane Outage</a></h3>
+        <p>Cloudflare control plane was degraded as a core datacenter became unavailable due to datacenter maintainence activities. The resolution is to ensure all GA services are highly available.</p>
+    </div>
+    <div class="card">
+        <h3><a href="https://status.openai.com/incidents/z0tly13xsyyb" target="_blank">OpenAI API Outage</a></h3>
+        <p>Internal network connectivity issues in kubernetes cluster caused other healthy nodes to receive more traffic than they would be able to handle. Network issues also caused observability tooling to be unavailable. Resolution was to fix the networking issue, remove unhealthy nodes, and better understand behavior when hardware fails.</p>
+    </div>
+    <div class="card">
+        <h3><a href="https://status.openai.com/incidents/4cckbrhr8hr0" target="_blank">DALL-E Web Interface Down</a></h3>
+        <p>Hosts were unable to properly join the cluster due to an expensive GPU diagnostics command causing initial health checks to fail. This occured due to a node restart for kubernetes upgrade. Resolution was to ensure node rejoined and implement load shedding tools.</p>
+    </div>
+    <div class="card">
+        <h3><a href="https://status.openai.com/incidents/ds7h4z02flf5" target="_blank">ChatGPT Outage</a></h3>
+        <p>Redis had maximum connections setting misconfigured which caused failures when it reached prod. This connection limit was not hit during staging or canary. Resolution is to improve Redis monitoring to catch the problem earlier.</p>
+    </div>
+</body>
+</html>

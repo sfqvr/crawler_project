@@ -1,0 +1,29 @@
+graph TD
+    subgraph "Этап сбора ссылок"
+        Stage1["Stage 1: Generate Seed URLs<br/>(Поиск исходных URL)"]
+        Stage2["Stage 2: Validate Dataset<br/>(Проверка валидности)"]
+    end
+
+    subgraph "Загрузка и Очистка (Web Crawling)"
+        Stage3["Stage 3: Crawl Cleaned HTML<br/>(Асинхронный краулинг и очистка HTML)"]
+    end
+
+    subgraph "Анализ и Фильтрация контента (LLM)"
+        Stage4["Stage 4: LLM Filter Relevance<br/>(Фильтрация мусора и классификация инцидентов)"]
+    end
+
+    subgraph "Подготовка к поиску (RAG без чанков)"
+        Stage5["Stage 5: HTML to Markdown<br/>(Конвертация в чистый текст)"]
+        Stage6["Stage 6: Extract Metadata<br/>(Сборка структурированного JSON-фрагмента)"]
+    end
+
+    subgraph "Векторное хранилище"
+        Stage7_8["Stage 7 & 8: Qdrant Indexing<br/>(Загрузка в векторную БД Qdrant)"]
+    end
+
+    Stage1 --> Stage2
+    Stage2 --> Stage3
+    Stage3 --> Stage4
+    Stage4 --> Stage5
+    Stage5 --> Stage6
+    Stage6 --> Stage7_8

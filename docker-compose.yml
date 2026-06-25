@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  # Сервис базы данных PostgreSQL
+  postgres:
+    image: postgres:15
+    restart: always
+    environment:
+      - POSTGRES_USER=prefect
+      - POSTGRES_PASSWORD=prefect
+      - POSTGRES_DB=prefect
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U prefect"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Основной сервис Prefect Server
+  server:
+    image: prefecthq/prefect:3-latest
+    restart: always
+    volumes:
+      - prefect_data:/root/.prefect
+    environment:
+      # Настройки для UI
+      - PREFECT_UI_API_URL=http://localhost:4200/api
+      - PREFECT_API_URL=http://localhost:4200/api
+      # Настройки для сервера
+      - PREFECT_SERVER_API_HOST=0.0.0.0
+      - PREFECT_SERVER_API_PORT=4200
+      # Подключение к PostgreSQL
+      - PREFECT_API_DATABASE_CONNECTION_URL=postgresql+asyncpg://prefect:prefect@postgres:5432/prefect
+    ports:
+      - "4200:4200"
+    command: prefect server start
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  prefect_data:

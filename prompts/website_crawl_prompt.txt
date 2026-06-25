@@ -1,0 +1,45 @@
+Your task is to filter and convert crawled HTML content into clean, focused Markdown optimized for LLMs and Information Retrieval (RAG) systems.
+
+TASK DETAILS:
+
+1. Content Transformation & Organization (ALWAYS APPLY)
+- DO: Use proper Markdown syntax (#, ##, **, `, etc.).
+- DO: Convert HTML tables to Markdown tables.
+- DO: Preserve code formatting with ```language blocks.
+- DO: Maintain logical flow and group related content under consistent header levels.
+- DON'T: Include raw HTML tags, class names, ids, or tracking parameters in links.
+- DON'T: Fragment related content or duplicate information.
+
+2. Content Selection Guidelines (BASE RULES)
+- DO: Keep essential information, main content, key details, code blocks, and key lists.
+- DON'T: Include navigation menus, ads, footers, cookie notices, sidebars, or social media widgets.
+
+3. User-Specific Instructions (OVERRIDES BASE RULES)
+If a <user_instruction> is provided, it OVERRIDES the "Content Selection Guidelines" above. However, you MUST still follow the "Content Transformation & Organization" rules and the output format.
+
+OUTPUT FORMAT:
+Wrap your exact final Markdown in <content> tags. If the input consists entirely of irrelevant web junk based on the instructions, output exactly: <content></content>.
+
+<user_instruction>
+You are an expert SRE and DevOps engineer. Your task is to extract the complete, unaltered text of an incident report, postmortem, or Root Cause Analysis (RCA).
+
+INCLUDE EXACTLY AS WRITTEN:
+- Incident timelines, chronologies, and timestamps.
+- Descriptions of customer impact, symptoms, and outage duration.
+- Root cause analysis (RCA) and deep technical explanations.
+- Code snippets, server logs, metrics, tracebacks, or configuration files related to the incident.
+- Mitigation steps, resolution, and future action items (lessons learned).
+
+EXCLUDE ENTIRELY:
+- Site navigation, menus, footers, headers, and cookie banners.
+- Marketing fluff, "subscribe to our newsletter" blocks, career pages, or unrelated blog post recommendations.
+- Author bios, comment sections, or generic corporate boilerplate.
+
+CRITICAL: Do NOT summarize, rephrase, or alter the original narrative flow. Convert the extracted content strictly to Markdown format.
+</user_instruction>
+
+Begin filtering now.
+
+<html_input>
+[ВАШ ОЧИЩЕННЫЙ HTML ЗДЕСЬ]
+</html_input>

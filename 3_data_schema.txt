@@ -1,0 +1,30 @@
+name: str
+url: str
+description: str
+error: bool
+
+cleaned_html: str
+
+crawl_success: bool
+crawl_error_message: str
+crawl_error_primary: str
+crawl_error_fallback: str
+crawl_mode: str              # primary | fallback | failed
+crawl_url_type: str          # WAYBACK | NORMAL
+
+cleaned_html_length: int
+crawl_suspect: bool
+
+crawl_attempt_count: int
+crawl_primary_success: bool
+crawl_fallback_used: bool
+
+crawl_started_at_utc: str
+crawl_finished_at_utc: str
+crawl_elapsed_seconds: float
+
+crawler_version_hint: str
+
+debug_requested_url: str
+debug_result_url: str
+debug_status_code: int | null

@@ -1,0 +1,7 @@
+.env
+*.env
+.env.*
+secrets.py
+config.py
+*.key
+*.pem

@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Incident Search Demo</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+<div class="page">
+    <aside class="sidebar">
+        <div class="sidebar-inner">
+            <h1>Incident Search Demo</h1>
+
+            <div class="meta-block">
+                <div><strong>Collection:</strong> {{ qdrant_collection }}</div>
+                <div><strong>Embedding model:</strong> {{ embedding_model }}</div>
+                <div><strong>Dataset rows:</strong> {{ total_dataset_rows }}</div>
+            </div>
+
+            <form method="get" action="/" class="search-form">
+                <label class="field">
+                    <span>Semantic query</span>
+                    <textarea name="query" rows="4" placeholder="e.g. postgres xid wraparound outage">{{ query_text }}</textarea>
+                </label>
+
+                <div class="grid-two">
+                    <label class="field">
+                        <span>Limit</span>
+                        <input type="number" name="limit" min="1" max="100" value="{{ limit }}">
+                    </label>
+
+                    <label class="field">
+                        <span>Score threshold</span>
+                        <input type="text" name="score_threshold" placeholder="optional" value="{{ score_threshold if score_threshold is not none else '' }}">
+                    </label>
+                </div>
+
+                <label class="field">
+                    <span>Document kind</span>
+                    <select name="document_kind" multiple size="4">
+                        {% for value in filter_options.document_kinds %}
+                            <option value="{{ value }}" {% if value in document_kinds %}selected{% endif %}>{{ value }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+
+                <label class="field">
+                    <span>Incident categories</span>
+                    <select name="incident_categories" multiple size="8">
+                        {% for value in filter_options.incident_categories %}
+                            <option value="{{ value }}" {% if value in incident_categories %}selected{% endif %}>{{ value }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+
+                <label class="field">
+                    <span>Infrastructure</span>
+                    <select name="infrastructure" multiple size="8">
+                        {% for value in filter_options.infrastructures %}
+                            <option value="{{ value }}" {% if value in infrastructures %}selected{% endif %}>{{ value }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+
+                <label class="field">
+                    <span>Company (exact keyword filter, comma-separated allowed)</span>
+                    <input type="text" name="company" list="company-options" value="{{ companies|join(', ') }}" placeholder="e.g. Cloudflare, GitHub">
+                    <datalist id="company-options">
+                        {% for company in filter_options.companies %}
+                            <option value="{{ company }}"></option>
+                        {% endfor %}
+                    </datalist>
+                </label>
+
+                <label class="field">
+                    <span>tech_stack_text</span>
+                    <input type="text" name="tech_stack_text" value="{{ tech_stack_text }}" placeholder="e.g. postgres kafka">
+                </label>
+
+                <label class="checkbox">
+                    <input type="checkbox" name="tech_stack_any" {% if tech_stack_any %}checked{% endif %}>
+                    <span>Use ANY-token mode for tech_stack_text</span>
+                </label>
+
+                <label class="field">
+                    <span>key_terms_text</span>
+                    <input type="text" name="key_terms_text" value="{{ key_terms_text }}" placeholder="e.g. memory leak or route reflectors">
+                </label>
+
+                <label class="checkbox">
+                    <input type="checkbox" name="key_terms_any" {% if key_terms_any %}checked{% endif %}>
+                    <span>Use ANY-token mode for key_terms_text</span>
+                </label>
+
+                <div class="actions">
+                    <button type="submit" class="btn btn-primary">Search</button>
+                    <a href="{{ url_for('index') }}" class="btn btn-secondary">Reset</a>
+                    <a href="{{ url_for('api_search', **request.args) }}" class="btn btn-secondary" target="_blank">Open JSON API</a>
+                </div>
+            </form>
+
+            <div class="hint-block">
+                <h3>How it works</h3>
+                <ul>
+                    <li>If <strong>Semantic query</strong> is filled, search uses vector retrieval.</li>
+                    <li>Keyword and text filters are applied on top of vector search.</li>
+                    <li>If semantic query is empty, the page falls back to filter-only browsing.</li>
+                    <li><strong>MatchText</strong> is stricter; <strong>ANY-token</strong> is wider recall.</li>
+                </ul>
+            </div>
+        </div>
+    </aside>
+
+    <main class="content">
+        <div class="content-header">
+            <div class="summary-card">
+                <div><strong>Mode:</strong> {{ result.mode }}</div>
+                <div><strong>Filter applied:</strong> {{ "yes" if result.filter_applied else "no" }}</div>
+                <div><strong>Returned hits:</strong> {{ result.hits|length }}</div>
+                <div><strong>Current limit:</strong> {{ result.limit }}</div>
+            </div>
+
+            {% if query_text %}
+                <div class="query-box">
+                    <strong>Semantic query:</strong> {{ query_text }}
+                </div>
+            {% endif %}
+        </div>
+
+        {% if result.hits %}
+            <div class="results">
+                {% for hit in result.hits %}
+                    {% set p = hit.payload %}
+                    <article class="result-card">
+                        <div class="result-head">
+                            <div>
+                                <h2>{{ p.name or "Untitled" }}</h2>
+                                <div class="subline">
+                                    <span><strong>Company:</strong> {{ p.company or "—" }}</span>
+                                    <span><strong>Kind:</strong> {{ p.document_kind or "—" }}</span>
+                                    <span><strong>Date:</strong> {{ p.date or "—" }}</span>
+                                    {% if hit.score is not none %}
+                                        <span><strong>Score:</strong> {{ "%.4f"|format(hit.score) }}</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            {% if p.url %}
+                                <a class="source-link" href="{{ p.url }}" target="_blank" rel="noopener noreferrer">Open source</a>
+                            {% endif %}
+                        </div>
+
+                        {% if p.short_description %}
+                            <p class="description">{{ p.short_description }}</p>
+                        {% endif %}
+
+                        <div class="tag-grid">
+                            <div class="tag-block">
+                                <div class="tag-title">Incident categories</div>
+                                <div class="tags">
+                                    {% for item in p.incident_categories or [] %}
+                                        <span class="tag">{{ item }}</span>
+                                    {% endfor %}
+                                </div>
+                            </div>
+
+                            <div class="tag-block">
+                                <div class="tag-title">Infrastructure</div>
+                                <div class="tags">
+                                    {% for item in p.infrastructure or [] %}
+                                        <span class="tag">{{ item }}</span>
+                                    {% endfor %}
+                                </div>
+                            </div>
+
+                            <div class="tag-block">
+                                <div class="tag-title">Tech stack</div>
+                                <div class="tags">
+                                    {% for item in p.tech_stack or [] %}
+                                        <span class="tag">{{ item }}</span>
+                                    {% endfor %}
+                                </div>
+                            </div>
+
+                            <div class="tag-block">
+                                <div class="tag-title">Key terms</div>
+                                <div class="tags">
+                                    {% for item in p.key_terms or [] %}
+                                        <span class="tag">{{ item }}</span>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="text-grid">
+                            <div class="text-block">
+                                <div class="text-title">Symptoms</div>
+                                <div class="text-body">{{ p.symptoms or "—" }}</div>
+                            </div>
+
+                            <div class="text-block">
+                                <div class="text-title">Root cause</div>
+                                <div class="text-body">{{ p.root_cause or "—" }}</div>
+                            </div>
+
+                            <div class="text-block">
+                                <div class="text-title">Resolution</div>
+                                <div class="text-body">{{ p.resolution or "—" }}</div>
+                            </div>
+
+                            <div class="text-block">
+                                <div class="text-title">Lessons learned</div>
+                                <div class="text-body">{{ p.lessons_learned or "—" }}</div>
+                            </div>
+                        </div>
+
+                        <details class="details-block">
+                            <summary>Show markdown content</summary>
+                            <pre class="markdown-box">{{ p.markdown_content or "" }}</pre>
+                        </details>
+
+                        <details class="details-block">
+                            <summary>Show raw payload</summary>
+                            <pre class="markdown-box">{{ p | tojson(indent=2) }}</pre>
+                        </details>
+                    </article>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="empty-state">
+                <h2>No results</h2>
+                <p>Try changing the semantic query, relaxing text filters, or increasing the limit.</p>
+            </div>
+        {% endif %}
+    </main>
+</div>
+</body>
+</html>
