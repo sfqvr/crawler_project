@@ -16,7 +16,7 @@ SCRIPTS = {
 PYTHON = PROJECT_DIR / ".venv" / "Scripts" / "python.exe"
 
 
-def _run_script(script_name: str, script_path: Path) -> None:
+def _run_script(script_name: str, script_path: Path):
     logger = get_run_logger()
     logger.info(f"Запуск: {script_name}")
 
@@ -53,7 +53,7 @@ def _run_script(script_name: str, script_path: Path) -> None:
     retry_delay_seconds=30,
     tags=["etl", "seed"],
 )
-def task_generate_seed_urls() -> None:
+def task_generate_seed_urls():
     _run_script("1_generate_seed_urls", SCRIPTS["1_generate_seed_urls"])
 
 
@@ -63,7 +63,7 @@ def task_generate_seed_urls() -> None:
     retry_delay_seconds=10,
     tags=["etl", "validation"],
 )
-def task_validate_seed_dataset() -> None:
+def task_validate_seed_dataset():
     _run_script("2_validate_seed_dataset", SCRIPTS["2_validate_seed_dataset"])
 
 
@@ -73,7 +73,7 @@ def task_validate_seed_dataset() -> None:
     retry_delay_seconds=60,
     tags=["etl", "crawl"],
 )
-def task_crawl_cleaned_html() -> None:
+def task_crawl_cleaned_html():
     _run_script("3_crawl_cleaned_html", SCRIPTS["3_crawl_cleaned_html"])
 
 
@@ -83,12 +83,12 @@ def task_crawl_cleaned_html() -> None:
     retry_delay_seconds=120,
     tags=["etl", "llm"],
 )
-def task_llm_filter_relevance() -> None:
+def task_llm_filter_relevance():
     _run_script("4_llm_filter_relevance", SCRIPTS["4_llm_filter_relevance"])
 
 
 @flow(name="Pipeline — Steps 1-4", log_prints=True)
-def etl_pipeline() -> None:
+def etl_pipeline():
     logger = get_run_logger()
     logger.info("Запуск пайплайна: шаги 1-4")
 
