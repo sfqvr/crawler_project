@@ -16,6 +16,10 @@ SCRIPTS = {
     "2_validate_seed_dataset": PROJECT_DIR / "2_validate_seed_dataset.py",
     "3_crawl_cleaned_html": PROJECT_DIR / "3_crawl_cleaned_html.py",
     "4_llm_filter_relevance": PROJECT_DIR / "4_llm_filter_relevance.py",
+    "5_html_to_markdown": PROJECT_DIR / "5_html_to_markdown.py",
+    "6_extract_metadata": PROJECT_DIR / "6_extract_metadata.py",
+    "7_prepare_qdrant_dataset": PROJECT_DIR / "7_prepare_qdrant_dataset.py",
+    "8_upload_to_qdrant": PROJECT_DIR / "8_upload_to_qdrant.py"
 }
 
 PYTHON = PROJECT_DIR / ".venv" / "Scripts" / "python.exe"
@@ -130,6 +134,47 @@ def task_crawl_cleaned_html():
 def task_llm_filter_relevance():
     _run_script("4_llm_filter_relevance", SCRIPTS["4_llm_filter_relevance"])
 
+#-------------------------
+@task(
+    name="5_html_to_markdown",
+    retries=2,
+    retry_delay_seconds=120,
+    tags=["etl", "markdown"],
+)
+def task_html_to_markdown():
+    _run_script("5_html_to_markdown", SCRIPTS["5_html_to_markdown"])
+
+
+@task(
+    name="6_extract_metadata",
+    retries=2,
+    retry_delay_seconds=120,
+    tags=["etl", "metadata"],
+)
+def task_extract_metadata():
+    _run_script("6_extract_metadata", SCRIPTS["6_extract_metadata"])
+
+
+@task(
+    name="7_prepare_qdrant_dataset",
+    retries=1,
+    retry_delay_seconds=10,
+    tags=["etl", "prepare"],
+)
+def task_prepare_qdrant_dataset():
+    _run_script("7_prepare_qdrant_dataset", SCRIPTS["7_prepare_qdrant_dataset"])
+
+
+@task(
+    name="8_upload_to_qdrant",
+    retries=1,
+    retry_delay_seconds=10,
+    tags=["etl", "qdrant"],
+)
+def task_upload_to_qdrant():
+    _run_script("8_upload_to_qdrant", SCRIPTS["8_upload_to_qdrant"])
+
+
 
 @flow(name="Pipeline — Steps 1-4", log_prints=True)
 def etl_pipeline():
@@ -146,5 +191,23 @@ def etl_pipeline():
     _log_pipeline("ЗАВЕРШЁН: пайплайн шагов 1-4")
 
 
+@flow(name="Pipeline — Steps 1-8", log_prints=True)
+def etl_pipeline_full():
+    logger = get_run_logger()
+    logger.info("Запуск пайплайна: шаги 1-8")
+    _log_pipeline("ЗАПУСК пайплайна: шаги 1-8")
+
+    result_1 = task_generate_seed_urls()
+    result_2 = task_validate_seed_dataset(wait_for=[result_1])
+    result_3 = task_crawl_cleaned_html(wait_for=[result_2])
+    result_4 = task_llm_filter_relevance(wait_for=[result_3])
+    result_5 = task_html_to_markdown(wait_for=[result_4])
+    result_6 = task_extract_metadata(wait_for=[result_5])
+    result_7 = task_prepare_qdrant_dataset(wait_for=[result_6])
+    task_upload_to_qdrant(wait_for=[result_7])
+
+    logger.info("Пайплайн завершён")
+    _log_pipeline("ЗАВЕРШЁН: пайплайн шагов 1-8")
+
 if __name__ == "__main__":
-    etl_pipeline()
+    etl_pipeline_full()
