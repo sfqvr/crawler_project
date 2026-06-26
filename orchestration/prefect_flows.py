@@ -22,11 +22,9 @@ PYTHON = PROJECT_DIR / ".venv" / "Scripts" / "python.exe"
 
 
 def _get_step_logger(step_name: str):
-    """Создаёт логгер для конкретного шага — пишет в отдельный файл."""
     logger = logging.getLogger(f"step.{step_name}")
     logger.setLevel(logging.INFO)
 
-    # Чтобы логи не дублировались при повторных вызовах
     if not logger.handlers:
         log_path = LOG_DIR / f"{step_name}.log"
         handler = logging.FileHandler(log_path, mode="a", encoding="utf-8")
@@ -44,7 +42,6 @@ PIPELINE_LOG_PATH = LOG_DIR / "pipeline.log"
 
 
 def _log_pipeline(message: str):
-    """Пишет в общий лог пайплайна."""
     with open(PIPELINE_LOG_PATH, "a", encoding="utf-8") as f:
         f.write(f"{datetime.now():%Y-%m-%d %H:%M:%S} | {message}\n")
 
