@@ -3,6 +3,9 @@ from pathlib import Path
 from typing import Any
 from uuid import NAMESPACE_URL, uuid5
 
+from prefect import task
+
+
 
 INPUT_FILE = Path("parsed_danluu/danluu_postmortems_stage6.jsonl")
 OUTPUT_FILE = Path("parsed_danluu/danluu_postmortems_qdrant_ready.jsonl")
@@ -211,6 +214,7 @@ def print_output_schema() -> None:
     print("=" * 80)
 
 
+@task
 def main():
     if not INPUT_FILE.exists():
         print(f"Ошибка: файл не найден: {INPUT_FILE}")

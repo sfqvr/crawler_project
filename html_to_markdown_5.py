@@ -15,6 +15,9 @@ from langchain_core.prompts import ChatPromptTemplate
 from dotenv import load_dotenv
 import os
 
+from prefect import task
+
+
 load_dotenv()
 
 # =============================================================================
@@ -429,6 +432,7 @@ def run_stage5_for_row(agent, row: dict) -> Stage5Result:
 # =============================================================================
 # MAIN
 # =============================================================================
+@task
 async def main():
     ensure_parent_dir(OUTPUT_FILE)
     print_output_schema()

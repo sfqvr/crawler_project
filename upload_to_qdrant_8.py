@@ -9,6 +9,9 @@ from dotenv import load_dotenv
 from openai import OpenAI
 from qdrant_client import QdrantClient, models
 
+from prefect import task
+
+
 
 # =============================================================================
 # CONFIG
@@ -315,6 +318,7 @@ def print_payload_schema() -> None:
     print("=" * 80)
 
 
+@task
 def main():
     if not INPUT_FILE.exists():
         raise FileNotFoundError(f"Input file not found: {INPUT_FILE}")

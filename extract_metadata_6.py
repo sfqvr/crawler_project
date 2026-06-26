@@ -14,6 +14,9 @@ from langchain.agents import create_agent
 from langchain.tools import tool
 from langchain_core.prompts import ChatPromptTemplate
 
+from prefect import task
+
+
 
 # =============================================================================
 # CONFIG
@@ -600,6 +603,7 @@ def run_stage6_for_row(agent, row: dict) -> Stage6Result:
 # =============================================================================
 # MAIN
 # =============================================================================
+@task
 async def main():
     ensure_parent_dir(OUTPUT_FILE)
     print_output_schema()
