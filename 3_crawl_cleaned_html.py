@@ -9,7 +9,6 @@ from typing import Optional
 import pandas as pd
 from crawl4ai import AsyncWebCrawler, CacheMode
 from crawl4ai.async_configs import BrowserConfig, CrawlerRunConfig
-from crawl4ai.async_dispatcher import SemaphoreDispatcher
 
 
 INPUT_FILE = Path("parsed_danluu/danluu_postmortems.jsonl")
@@ -197,11 +196,31 @@ async def run_batch(
     if not urls:
         return []
 
-    config = build_config(fallback=fallback)
-    dispatcher = SemaphoreDispatcher(semaphore_count=SEMAPHORE_COUNT)
+    sem = asyncio.Semaphore(SEMAPHORE_COUNT)
+
+    async def crawl_one(url: str):
+        async with sem:
+            config = build_config(fallback=fallback)
+            try:
+                return await asyncio.wait_for(
+                    crawler.arun(url=url, config=config),
+                    timeout=120.0,
+                )
+            except asyncio.TimeoutError:
+                debug_print(f"[TIMEOUT] URL не уложился в 120с: {url[:80]}")
+                class _DummyResult:
+                    url = url
+                    success = False
+                    cleaned_html = ""
+                    error_message = "Timeout after 120s"
+                    status_code = None
+                    def __getattr__(self, name):
+                        return None
+                return _DummyResult()
+
     try:
         return await asyncio.wait_for(
-            crawler.arun_many(urls=urls, config=config, dispatcher=dispatcher),
+            asyncio.gather(*[crawl_one(url) for url in urls]),
             timeout=600.0,
         )
     except asyncio.TimeoutError:
