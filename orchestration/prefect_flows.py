@@ -34,22 +34,35 @@ def _run_script(script_name: str, script_path: Path):
 
     try:
         with open(log_path, "a", encoding="utf-8") as log_f:
-            result = subprocess.run(
+            process = subprocess.Popen(
                 [str(PYTHON), str(script_path)],
                 cwd=str(PROJECT_DIR),
-                stdout=log_f,
+                stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
-                timeout=3600,
                 env={
                     **os.environ,
                     'PYTHONIOENCODING': 'utf-8',
                 },
+                bufsize=1,
+                text=True,
+                encoding='utf-8',
             )
 
-        logger.info(f"{script_name}: exit code {result.returncode}")
+            while True:
+                line = process.stdout.readline()
+                if not line:
+                    break
+                line = line.rstrip()
+                log_f.write(line + "\n")
+                log_f.flush()
+                logger.info(f"[{script_name}] {line}")
 
-        if result.returncode != 0:
-            raise RuntimeError(f"Скрипт {script_name} упал с кодом {result.returncode}")
+            process.wait(timeout=3600)
+
+        logger.info(f"{script_name}: exit code {process.returncode}")
+
+        if process.returncode != 0:
+            raise RuntimeError(f"Скрипт {script_name} упал с кодом {process.returncode}")
 
         logger.info(f"Завершён: {script_name}")
 
