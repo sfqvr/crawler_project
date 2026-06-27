@@ -1,46 +1,23 @@
 import subprocess
+import sys
 import logging
 from pathlib import Path
 from datetime import datetime
+import os
 
 from prefect import flow, task
 from prefect.logging import get_run_logger
+from dotenv import load_dotenv
 
 PROJECT_DIR = Path(__file__).resolve().parent.parent
+dotenv_path = PROJECT_DIR / "my_crawler_project" / ".env"
+if dotenv_path.exists():
+    load_dotenv(dotenv_path=dotenv_path)
+else:
+    load_dotenv()
+
 LOG_DIR = PROJECT_DIR / "logs"
-
 LOG_DIR.mkdir(exist_ok=True)
-
-SCRIPTS = {
-    "1_generate_seed_urls": PROJECT_DIR / "1_generate_seed_urls.py",
-    "2_validate_seed_dataset": PROJECT_DIR / "2_validate_seed_dataset.py",
-    "3_crawl_cleaned_html": PROJECT_DIR / "3_crawl_cleaned_html.py",
-    "4_llm_filter_relevance": PROJECT_DIR / "4_llm_filter_relevance.py",
-    "5_html_to_markdown": PROJECT_DIR / "5_html_to_markdown.py",
-    "6_extract_metadata": PROJECT_DIR / "6_extract_metadata.py",
-    "7_prepare_qdrant_dataset": PROJECT_DIR / "7_prepare_qdrant_dataset.py",
-    "8_upload_to_qdrant": PROJECT_DIR / "8_upload_to_qdrant.py"
-}
-
-PYTHON = PROJECT_DIR / ".venv" / "Scripts" / "python.exe"
-
-
-def _get_step_logger(step_name: str):
-    logger = logging.getLogger(f"step.{step_name}")
-    logger.setLevel(logging.INFO)
-
-    if not logger.handlers:
-        log_path = LOG_DIR / f"{step_name}.log"
-        handler = logging.FileHandler(log_path, mode="a", encoding="utf-8")
-        formatter = logging.Formatter(
-            "%(asctime)s | %(levelname)-8s | %(message)s",
-            datefmt="%Y-%m-%d %H:%M:%S",
-        )
-        handler.setFormatter(formatter)
-        logger.addHandler(handler)
-
-    return logger
-
 
 PIPELINE_LOG_PATH = LOG_DIR / "pipeline.log"
 
@@ -49,49 +26,72 @@ def _log_pipeline(message: str):
     with open(PIPELINE_LOG_PATH, "a", encoding="utf-8") as f:
         f.write(f"{datetime.now():%Y-%m-%d %H:%M:%S} | {message}\n")
 
+SCRIPTS = {
+    "1_generate_seed_urls": PROJECT_DIR / "1_generate_seed_urls.py",
+    "2_validate_seed_dataset": PROJECT_DIR / "2_validate_seed_dataset.py",
+    "3_crawl_cleaned_html": PROJECT_DIR / "3_crawl_cleaned_html.py",
+    "4_llm_filter_relevance": PROJECT_DIR / "4_llm_filter_relevance.py",
+}
+
+PYTHON = Path(sys.executable)
+
+
+def _step_log(script_name: str, message: str):
+    log_path = LOG_DIR / f"{script_name}.log"
+    with open(log_path, "a", encoding="utf-8") as f:
+        f.write(f"{datetime.now():%Y-%m-%d %H:%M:%S} | {message}\n")
+
 
 def _run_script(script_name: str, script_path: Path):
     logger = get_run_logger()
-    step_logger = _get_step_logger(script_name)
+    log_path = LOG_DIR / f"{script_name}.log"
 
-    step_logger.info("=" * 50)
-    step_logger.info("ЗАПУСК")
+    _step_log(script_name, "=" * 50)
+    _step_log(script_name, "ЗАПУСК")
     logger.info(f"Запуск: {script_name}")
 
     try:
-        result = subprocess.run(
-            [str(PYTHON), str(script_path)],
-            cwd=str(PROJECT_DIR),
-            capture_output=True,
-            text=True,
-            timeout=3600,
-        )
+        with open(log_path, "a", encoding="utf-8") as log_f:
+            process = subprocess.Popen(
+                [str(PYTHON), str(script_path)],
+                cwd=str(PROJECT_DIR),
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                env={
+                    **os.environ,
+                    'PYTHONIOENCODING': 'utf-8',
+                },
+                bufsize=1,
+                text=True,
+                encoding='utf-8',
+            )
 
-        step_logger.info(f"Exit code: {result.returncode}")
+            while True:
+                line = process.stdout.readline()
+                if not line:
+                    break
+                line = line.rstrip()
+                log_f.write(line + "\n")
+                log_f.flush()
+                if line.startswith("[OK]") or line.startswith("[FAIL]") or "BATCH" in line or "=== ГОТОВО" in line or line.startswith("[INFO]"):
+                    logger.info(f"[{script_name}] {line}")
 
-        if result.stdout:
-            step_logger.info(f"STDOUT:\n{result.stdout[:3000]}")
-            logger.info(f"STDOUT ({script_name}):\n{result.stdout[:2000]}")
+            process.wait(timeout=3600)
 
-        if result.returncode != 0:
-            logger.error(f"Ошибка в {script_name} (exit code {result.returncode})")
-            step_logger.error(f"ОШИБКА (exit code {result.returncode})")
-            if result.stderr:
-                logger.error(f"STDERR ({script_name}):\n{result.stderr[:2000]}")
-                step_logger.error(f"STDERR:\n{result.stderr[:3000]}")
-            raise RuntimeError(f"Скрипт {script_name} упал с кодом {result.returncode}")
+        _step_log(script_name, f"Exit code: {process.returncode}")
+        logger.info(f"{script_name}: exit code {process.returncode}")
 
-        if result.stderr:
-            logger.warning(f"STDERR ({script_name}):\n{result.stderr[:1000]}")
-            step_logger.warning(f"STDERR:\n{result.stderr[:1000]}")
+        if process.returncode != 0:
+            _step_log(script_name, f"ОШИБКА (exit code {process.returncode})")
+            raise RuntimeError(f"Скрипт {script_name} упал с кодом {process.returncode}")
 
-        step_logger.info("ЗАВЕРШЁН УСПЕШНО")
-        step_logger.info("=" * 50)
+        _step_log(script_name, "ЗАВЕРШЁН УСПЕШНО")
+        _step_log(script_name, "=" * 50)
         logger.info(f"Завершён: {script_name}")
 
     except subprocess.TimeoutExpired:
         logger.error(f"Таймаут скрипта {script_name} (>1 часа)")
-        step_logger.error("ТАЙМАУТ (>1 часа)")
+        _step_log(script_name, "ТАЙМАУТ (>1 часа)")
         raise
 
 
@@ -134,47 +134,6 @@ def task_crawl_cleaned_html():
 def task_llm_filter_relevance():
     _run_script("4_llm_filter_relevance", SCRIPTS["4_llm_filter_relevance"])
 
-#-------------------------
-@task(
-    name="5_html_to_markdown",
-    retries=2,
-    retry_delay_seconds=120,
-    tags=["etl", "markdown"],
-)
-def task_html_to_markdown():
-    _run_script("5_html_to_markdown", SCRIPTS["5_html_to_markdown"])
-
-
-@task(
-    name="6_extract_metadata",
-    retries=2,
-    retry_delay_seconds=120,
-    tags=["etl", "metadata"],
-)
-def task_extract_metadata():
-    _run_script("6_extract_metadata", SCRIPTS["6_extract_metadata"])
-
-
-@task(
-    name="7_prepare_qdrant_dataset",
-    retries=1,
-    retry_delay_seconds=10,
-    tags=["etl", "prepare"],
-)
-def task_prepare_qdrant_dataset():
-    _run_script("7_prepare_qdrant_dataset", SCRIPTS["7_prepare_qdrant_dataset"])
-
-
-@task(
-    name="8_upload_to_qdrant",
-    retries=1,
-    retry_delay_seconds=10,
-    tags=["etl", "qdrant"],
-)
-def task_upload_to_qdrant():
-    _run_script("8_upload_to_qdrant", SCRIPTS["8_upload_to_qdrant"])
-
-
 
 @flow(name="Pipeline — Steps 1-4", log_prints=True)
 def etl_pipeline():
@@ -191,23 +150,5 @@ def etl_pipeline():
     _log_pipeline("ЗАВЕРШЁН: пайплайн шагов 1-4")
 
 
-@flow(name="Pipeline — Steps 1-8", log_prints=True)
-def etl_pipeline_full():
-    logger = get_run_logger()
-    logger.info("Запуск пайплайна: шаги 1-8")
-    _log_pipeline("ЗАПУСК пайплайна: шаги 1-8")
-
-    result_1 = task_generate_seed_urls()
-    result_2 = task_validate_seed_dataset(wait_for=[result_1])
-    result_3 = task_crawl_cleaned_html(wait_for=[result_2])
-    result_4 = task_llm_filter_relevance(wait_for=[result_3])
-    result_5 = task_html_to_markdown(wait_for=[result_4])
-    result_6 = task_extract_metadata(wait_for=[result_5])
-    result_7 = task_prepare_qdrant_dataset(wait_for=[result_6])
-    task_upload_to_qdrant(wait_for=[result_7])
-
-    logger.info("Пайплайн завершён")
-    _log_pipeline("ЗАВЕРШЁН: пайплайн шагов 1-8")
-
 if __name__ == "__main__":
-    etl_pipeline_full()
+    etl_pipeline()
