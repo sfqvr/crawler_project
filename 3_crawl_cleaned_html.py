@@ -9,6 +9,7 @@ from typing import Optional
 import pandas as pd
 from crawl4ai import AsyncWebCrawler, CacheMode
 from crawl4ai.async_configs import BrowserConfig, CrawlerRunConfig
+from crawl4ai.async_dispatcher import SemaphoreDispatcher
 
 
 INPUT_FILE = Path("parsed_danluu/danluu_postmortems.jsonl")
@@ -197,9 +198,10 @@ async def run_batch(
         return []
 
     config = build_config(fallback=fallback)
+    dispatcher = SemaphoreDispatcher(semaphore_count=SEMAPHORE_COUNT)
     try:
         return await asyncio.wait_for(
-            crawler.arun_many(urls=urls, config=config),
+            crawler.arun_many(urls=urls, config=config, dispatcher=dispatcher),
             timeout=600.0,
         )
     except asyncio.TimeoutError:
