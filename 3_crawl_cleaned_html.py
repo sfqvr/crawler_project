@@ -19,10 +19,7 @@ RESUME_FROM_OUTPUT = False
 DEBUG = True
 HEADLESS = True
 
-# Параллельность внутри arun_many()
 SEMAPHORE_COUNT = 3
-
-# Размер батча URL, который отправляется в arun_many() за один проход
 BATCH_SIZE = 30
 
 
@@ -60,13 +57,12 @@ def build_browser_config() -> BrowserConfig:
     )
 
 
-def build_normal_config(fallback: bool = False) -> CrawlerRunConfig:
+def build_config(fallback: bool = False) -> CrawlerRunConfig:
     return CrawlerRunConfig(
-        url_matcher=lambda url: "web.archive.org" not in url,
         cache_mode=CacheMode.BYPASS,
         wait_until="load" if not fallback else "domcontentloaded",
-        page_timeout=60000 if not fallback else 90000,
-        wait_for_timeout=30000 if not fallback else 45000,
+        page_timeout=90000 if not fallback else 120000,
+        wait_for_timeout=45000 if not fallback else 60000,
         delay_before_return_html=2.0 if not fallback else 4.0,
         process_iframes=False,
         remove_overlay_elements=True,
@@ -78,51 +74,43 @@ def build_normal_config(fallback: bool = False) -> CrawlerRunConfig:
             return text.trim().length > 1200;
         }
         """,
-        stream=False,
-        semaphore_count=SEMAPHORE_COUNT,
-    )
-
-
-def build_wayback_config(fallback: bool = False) -> CrawlerRunConfig:
-    return CrawlerRunConfig(
-        url_matcher=lambda url: "web.archive.org" in url,
-        cache_mode=CacheMode.BYPASS,
-        wait_until="domcontentloaded",
-        page_timeout=90000 if not fallback else 120000,
-        wait_for_timeout=45000 if not fallback else 60000,
-        delay_before_return_html=3.0 if not fallback else 6.0,
-        process_iframes=False,
-        remove_overlay_elements=True,
-        wait_for_images=False,
-        scan_full_page=False,
         js_code="""
         (() => {
             const toolbar = document.querySelector('#wm-ipp');
             if (toolbar) toolbar.remove();
         })();
         """,
-        wait_for="""
-        js:() => {
-            const text = document.body?.innerText || "";
-            return text.trim().length > 1200;
-        }
-        """,
         stream=False,
-        semaphore_count=SEMAPHORE_COUNT,
     )
-
-
-def build_config_list(fallback: bool = False) -> list[CrawlerRunConfig]:
-    return [
-        build_wayback_config(fallback=fallback),
-        build_normal_config(fallback=fallback),
-    ]
 
 
 def build_single_run_config(url: str, fallback: bool = False) -> CrawlerRunConfig:
     if is_wayback_url(url):
-        return build_wayback_config(fallback=fallback)
-    return build_normal_config(fallback=fallback)
+        return CrawlerRunConfig(
+            cache_mode=CacheMode.BYPASS,
+            wait_until="domcontentloaded",
+            page_timeout=120000 if not fallback else 150000,
+            wait_for_timeout=60000 if not fallback else 75000,
+            delay_before_return_html=3.0 if not fallback else 6.0,
+            process_iframes=False,
+            remove_overlay_elements=True,
+            wait_for_images=False,
+            scan_full_page=False,
+            js_code="""
+            (() => {
+                const toolbar = document.querySelector('#wm-ipp');
+                if (toolbar) toolbar.remove();
+            })();
+            """,
+            wait_for="""
+            js:() => {
+                const text = document.body?.innerText || "";
+                return text.trim().length > 1200;
+            }
+            """,
+            stream=False,
+        )
+    return build_config(fallback=fallback)
 
 
 def load_processed_urls(output_path: Path) -> set[str]:
@@ -161,8 +149,8 @@ def print_output_schema() -> None:
         "crawl_error_message": "str",
         "crawl_error_primary": "str",
         "crawl_error_fallback": "str",
-        "crawl_mode": "str",  # primary | fallback | failed
-        "crawl_url_type": "str",  # WAYBACK | NORMAL
+        "crawl_mode": "str",
+        "crawl_url_type": "str",
         "cleaned_html_length": "int",
         "crawl_suspect": "bool",
         "crawl_attempt_count": "int",
@@ -175,7 +163,7 @@ def print_output_schema() -> None:
         "debug_requested_url": "str",
         "debug_result_url": "str",
         "debug_status_code": "int | null",
-        "debug_match_method": "str",  # batch_url_match | sequential_retry | sequential_retry_exception
+        "debug_match_method": "str",
         "debug_batch_id": "int | null",
     }
 
@@ -208,11 +196,15 @@ async def run_batch(
     if not urls:
         return []
 
-    configs = build_config_list(fallback=fallback)
-    return await crawler.arun_many(
-        urls=urls,
-        config=configs,
-    )
+    config = build_config(fallback=fallback)
+    try:
+        return await asyncio.wait_for(
+            crawler.arun_many(urls=urls, config=config),
+            timeout=600.0,
+        )
+    except asyncio.TimeoutError:
+        debug_print(f"[TIMEOUT] Batch не уложился в 600с ({len(urls)} urls)")
+        return []
 
 
 async def run_single(
@@ -263,7 +255,7 @@ def build_success_output_row(
         "crawl_started_at_utc": started_total_iso,
         "crawl_finished_at_utc": now_iso_utc(),
         "crawl_elapsed_seconds": round(time.perf_counter() - started_total_perf, 3),
-        "crawler_version_hint": "Crawl4AI 0.8.0",
+        "crawler_version_hint": "Crawl4AI 0.9.0",
         "debug_requested_url": requested_url,
         "debug_result_url": getattr(result, "url", requested_url),
         "debug_status_code": getattr(result, "status_code", None),
@@ -304,7 +296,7 @@ def build_failed_output_row(
         "crawl_started_at_utc": started_total_iso,
         "crawl_finished_at_utc": now_iso_utc(),
         "crawl_elapsed_seconds": round(time.perf_counter() - started_total_perf, 3),
-        "crawler_version_hint": "Crawl4AI 0.8.0",
+        "crawler_version_hint": "Crawl4AI 0.9.0",
         "debug_requested_url": requested_url,
         "debug_result_url": getattr(result, "url", requested_url),
         "debug_status_code": getattr(result, "status_code", None),
@@ -317,10 +309,6 @@ def match_results_to_rows(
     rows_batch: list[dict],
     results: list,
 ) -> tuple[list[tuple[dict, object, str]], list[dict], list[object]]:
-    """
-    Пытаемся надёжно сматчить batch-результаты с исходными строками по result.url.
-    Всё, что не сматчилось, уходит в sequential retry.
-    """
     rows_by_url: dict[str, deque] = defaultdict(deque)
     for row in rows_batch:
         rows_by_url[row["url"]].append(row)
@@ -579,7 +567,6 @@ async def main():
         df = df.head(LIMIT_ROWS).copy()
 
     debug_print(f"[INFO] Всего строк во входном файле: {len(df)}")
-    debug_print(f"[INFO] Параллельность arun_many (semaphore_count): {SEMAPHORE_COUNT}")
     debug_print(f"[INFO] Размер batch: {BATCH_SIZE}")
 
     processed_urls = set()
