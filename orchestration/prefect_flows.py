@@ -1,8 +1,6 @@
 import subprocess
 import sys
-import logging
 from pathlib import Path
-from datetime import datetime
 import os
 
 from prefect import flow, task
@@ -19,13 +17,6 @@ else:
 LOG_DIR = PROJECT_DIR / "logs"
 LOG_DIR.mkdir(exist_ok=True)
 
-PIPELINE_LOG_PATH = LOG_DIR / "pipeline.log"
-
-
-def _log_pipeline(message: str):
-    with open(PIPELINE_LOG_PATH, "a", encoding="utf-8") as f:
-        f.write(f"{datetime.now():%Y-%m-%d %H:%M:%S} | {message}\n")
-
 SCRIPTS = {
     "1_generate_seed_urls": PROJECT_DIR / "1_generate_seed_urls.py",
     "2_validate_seed_dataset": PROJECT_DIR / "2_validate_seed_dataset.py",
@@ -36,62 +27,34 @@ SCRIPTS = {
 PYTHON = Path(sys.executable)
 
 
-def _step_log(script_name: str, message: str):
-    log_path = LOG_DIR / f"{script_name}.log"
-    with open(log_path, "a", encoding="utf-8") as f:
-        f.write(f"{datetime.now():%Y-%m-%d %H:%M:%S} | {message}\n")
-
-
 def _run_script(script_name: str, script_path: Path):
     logger = get_run_logger()
     log_path = LOG_DIR / f"{script_name}.log"
-
-    _step_log(script_name, "=" * 50)
-    _step_log(script_name, "ЗАПУСК")
     logger.info(f"Запуск: {script_name}")
 
     try:
         with open(log_path, "a", encoding="utf-8") as log_f:
-            process = subprocess.Popen(
+            result = subprocess.run(
                 [str(PYTHON), str(script_path)],
                 cwd=str(PROJECT_DIR),
-                stdout=subprocess.PIPE,
+                stdout=log_f,
                 stderr=subprocess.STDOUT,
+                timeout=3600,
                 env={
                     **os.environ,
                     'PYTHONIOENCODING': 'utf-8',
                 },
-                bufsize=1,
-                text=True,
-                encoding='utf-8',
             )
 
-            while True:
-                line = process.stdout.readline()
-                if not line:
-                    break
-                line = line.rstrip()
-                log_f.write(line + "\n")
-                log_f.flush()
-                if line.startswith("[OK]") or line.startswith("[FAIL]") or "BATCH" in line or "=== ГОТОВО" in line or line.startswith("[INFO]"):
-                    logger.info(f"[{script_name}] {line}")
+        logger.info(f"{script_name}: exit code {result.returncode}")
 
-            process.wait(timeout=3600)
+        if result.returncode != 0:
+            raise RuntimeError(f"Скрипт {script_name} упал с кодом {result.returncode}")
 
-        _step_log(script_name, f"Exit code: {process.returncode}")
-        logger.info(f"{script_name}: exit code {process.returncode}")
-
-        if process.returncode != 0:
-            _step_log(script_name, f"ОШИБКА (exit code {process.returncode})")
-            raise RuntimeError(f"Скрипт {script_name} упал с кодом {process.returncode}")
-
-        _step_log(script_name, "ЗАВЕРШЁН УСПЕШНО")
-        _step_log(script_name, "=" * 50)
         logger.info(f"Завершён: {script_name}")
 
     except subprocess.TimeoutExpired:
         logger.error(f"Таймаут скрипта {script_name} (>1 часа)")
-        _step_log(script_name, "ТАЙМАУТ (>1 часа)")
         raise
 
 
@@ -139,7 +102,6 @@ def task_llm_filter_relevance():
 def etl_pipeline():
     logger = get_run_logger()
     logger.info("Запуск пайплайна")
-    _log_pipeline("ЗАПУСК пайплайна")
 
     result_1 = task_generate_seed_urls()
     result_2 = task_validate_seed_dataset(wait_for=[result_1])
@@ -147,7 +109,6 @@ def etl_pipeline():
     task_llm_filter_relevance(wait_for=[result_3])
 
     logger.info("Пайплайн завершён")
-    _log_pipeline("ЗАВЕРШЁН: пайплайн")
 
 
 if __name__ == "__main__":
