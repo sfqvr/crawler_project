@@ -135,11 +135,11 @@ def task_llm_filter_relevance():
     _run_script("4_llm_filter_relevance", SCRIPTS["4_llm_filter_relevance"])
 
 
-@flow(name="Pipeline — Steps 1-4", log_prints=True)
+@flow(name="Prefect Pipeline", log_prints=True)
 def etl_pipeline():
     logger = get_run_logger()
-    logger.info("Запуск пайплайна: шаги 1-4")
-    _log_pipeline("ЗАПУСК пайплайна: шаги 1-4")
+    logger.info("Запуск пайплайна")
+    _log_pipeline("ЗАПУСК пайплайна")
 
     result_1 = task_generate_seed_urls()
     result_2 = task_validate_seed_dataset(wait_for=[result_1])
@@ -147,7 +147,7 @@ def etl_pipeline():
     task_llm_filter_relevance(wait_for=[result_3])
 
     logger.info("Пайплайн завершён")
-    _log_pipeline("ЗАВЕРШЁН: пайплайн шагов 1-4")
+    _log_pipeline("ЗАВЕРШЁН: пайплайн")
 
 
 if __name__ == "__main__":
