@@ -9,13 +9,27 @@ from dotenv import load_dotenv
 from openai import OpenAI
 from qdrant_client import QdrantClient, models
 
+from minio_client import MinIOStorage
+
 
 # =============================================================================
 # CONFIG
 # =============================================================================
 load_dotenv()
 
-INPUT_FILE = Path("parsed_danluu/danluu_postmortems_qdrant_ready.jsonl")
+INPUT_FOLDER_NAME = "parsed_jimmyl02"
+INPUT_FILENAMES_PREFIX = "jimmyl02_postmortems"
+
+storage = MinIOStorage()
+storage.client.fget_object(
+    bucket_name=INPUT_FOLDER_NAME,
+    object_name=f"{INPUT_FILENAMES_PREFIX}.jsonl",
+    file_path=f"{INPUT_FOLDER_NAME}/{INPUT_FILENAMES_PREFIX}_stage7.jsonl",
+)
+
+INPUT_FILE = Path(f"{INPUT_FOLDER_NAME}/{INPUT_FILENAMES_PREFIX}_stage7.jsonl")
+
+# INPUT_FILE = Path("parsed_danluu/danluu_postmortems_qdrant_ready.jsonl")
 
 # OpenAI-compatible embeddings endpoint
 EMBEDDING_MODEL = os.getenv("OPENAI_EMBEDDING_MODEL", os.getenv("OPENAI_MODEL", "text-embedding-3-small"))

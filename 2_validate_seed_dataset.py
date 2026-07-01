@@ -1,8 +1,13 @@
 import pandas as pd
 from pathlib import Path
+from minio_client import MinIOStorage
 
 # Задаем путь к файлу относительно корня скрипта
+
+
 FILE_PATH = Path("parsed_danluu/danluu_postmortems.jsonl")
+
+
 
 def main():
     # Небольшая проверка, чтобы скрипт понятно ругался, если файла нет на месте

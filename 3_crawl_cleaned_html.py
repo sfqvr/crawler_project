@@ -9,10 +9,21 @@ from typing import Optional
 import pandas as pd
 from crawl4ai import AsyncWebCrawler, CacheMode
 from crawl4ai.async_configs import BrowserConfig, CrawlerRunConfig
+from minio_client import MinIOStorage
 
 
-INPUT_FILE = Path("parsed_danluu/danluu_postmortems.jsonl")
-OUTPUT_FILE = Path("parsed_danluu/danluu_postmortems_with_html.jsonl")
+INPUT_FOLDER_NAME = "parsed_jimmyl02"
+INPUT_FILENAMES_PREFIX = "jimmyl02_postmortems"
+
+storage = MinIOStorage()
+storage.client.fget_object(
+    bucket_name=INPUT_FOLDER_NAME,
+    object_name=f"{INPUT_FILENAMES_PREFIX}.jsonl",
+    file_path=f"{INPUT_FOLDER_NAME}/{INPUT_FILENAMES_PREFIX}.jsonl",
+)
+
+INPUT_FILE = Path(f"{INPUT_FOLDER_NAME}/{INPUT_FILENAMES_PREFIX}.jsonl")
+OUTPUT_FILE = Path(f"{INPUT_FOLDER_NAME}/{INPUT_FILENAMES_PREFIX}_stage3.jsonl")
 
 LIMIT_ROWS: Optional[int] = None
 RESUME_FROM_OUTPUT = False
@@ -658,6 +669,12 @@ async def main():
                     fail_count += 1
             else:
                 debug_print(f"[BATCH {batch_id}] Fallback не нужен.")
+
+    storage.client.fput_object(
+        bucket_name=INPUT_FOLDER_NAME,
+        object_name=f"{INPUT_FILENAMES_PREFIX}_stage3.jsonl",
+        file_path=OUTPUT_FILE,
+    )
 
     debug_print("\n" + "=" * 80)
     debug_print("=== ГОТОВО ===")

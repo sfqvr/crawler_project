@@ -3,9 +3,25 @@ from pathlib import Path
 from typing import Any
 from uuid import NAMESPACE_URL, uuid5
 
+from minio_client import MinIOStorage
 
-INPUT_FILE = Path("parsed_danluu/danluu_postmortems_stage6.jsonl")
-OUTPUT_FILE = Path("parsed_danluu/danluu_postmortems_qdrant_ready.jsonl")
+
+
+INPUT_FOLDER_NAME = "parsed_jimmyl02"
+INPUT_FILENAMES_PREFIX = "jimmyl02_postmortems"
+
+storage = MinIOStorage()
+storage.client.fget_object(
+    bucket_name=INPUT_FOLDER_NAME,
+    object_name=f"{INPUT_FILENAMES_PREFIX}.jsonl",
+    file_path=f"{INPUT_FOLDER_NAME}/{INPUT_FILENAMES_PREFIX}_stage6.jsonl",
+)
+
+INPUT_FILE = Path(f"{INPUT_FOLDER_NAME}/{INPUT_FILENAMES_PREFIX}_stage6.jsonl")
+OUTPUT_FILE = Path(f"{INPUT_FOLDER_NAME}/{INPUT_FILENAMES_PREFIX}_stage7.jsonl")
+
+# INPUT_FILE = Path("parsed_danluu/danluu_postmortems_stage6.jsonl")
+# OUTPUT_FILE = Path("parsed_danluu/danluu_postmortems_qdrant_ready.jsonl")
 
 
 def load_jsonl(path: Path) -> list[dict]:
@@ -234,6 +250,12 @@ def main():
         transformed = transform_row(row)
         append_jsonl_row(OUTPUT_FILE, transformed)
         output_count += 1
+
+    storage.client.fput_object(
+        bucket_name=INPUT_FOLDER_NAME,
+        object_name=f"{INPUT_FILENAMES_PREFIX}_stage7.jsonl",
+        file_path=OUTPUT_FILE,
+    )
 
     print("=" * 80)
     print("=== QDRANT DATASET PREPARATION COMPLETE ===")

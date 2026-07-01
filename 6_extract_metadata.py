@@ -14,14 +14,29 @@ from langchain.agents import create_agent
 from langchain.tools import tool
 from langchain_core.prompts import ChatPromptTemplate
 
+from minio_client import MinIOStorage
+
 
 # =============================================================================
 # CONFIG
 # =============================================================================
 load_dotenv()
 
-INPUT_FILE = Path("parsed_danluu/danluu_postmortems_stage5.jsonl")
-OUTPUT_FILE = Path("parsed_danluu/danluu_postmortems_stage6.jsonl")
+INPUT_FOLDER_NAME = "parsed_jimmyl02"
+INPUT_FILENAMES_PREFIX = "jimmyl02_postmortems"
+
+storage = MinIOStorage()
+storage.client.fget_object(
+    bucket_name=INPUT_FOLDER_NAME,
+    object_name=f"{INPUT_FILENAMES_PREFIX}.jsonl",
+    file_path=f"{INPUT_FOLDER_NAME}/{INPUT_FILENAMES_PREFIX}_stage5.jsonl",
+)
+
+INPUT_FILE = Path(f"{INPUT_FOLDER_NAME}/{INPUT_FILENAMES_PREFIX}_stage5.jsonl")
+OUTPUT_FILE = Path(f"{INPUT_FOLDER_NAME}/{INPUT_FILENAMES_PREFIX}_stage6.jsonl")
+
+# INPUT_FILE = Path("parsed_danluu/danluu_postmortems_stage5.jsonl")
+# OUTPUT_FILE = Path("parsed_danluu/danluu_postmortems_stage6.jsonl")
 
 LIMIT_ROWS: Optional[int] = None
 RESUME_FROM_OUTPUT = False
@@ -672,6 +687,12 @@ async def main():
         else:
             stage6_fail_count += 1
             debug_print(f"[FAIL][STAGE6] {stage6_result.error_message}")
+
+    storage.client.fput_object(
+        bucket_name=INPUT_FOLDER_NAME,
+        object_name=f"{INPUT_FILENAMES_PREFIX}_stage6.jsonl",
+        file_path=OUTPUT_FILE,
+    )
 
     debug_print("\n" + "=" * 80)
     debug_print("=== ГОТОВО ===")
