@@ -25,7 +25,7 @@ INPUT_FILENAMES_PREFIX = "jimmyl02_postmortems"
 
 storage = MinIOStorage()
 storage.client.fget_object(
-    bucket_name=INPUT_FOLDER_NAME,
+    bucket_name='raw_data',
     object_name=f"{INPUT_FILENAMES_PREFIX}.jsonl",
     file_path=f"{INPUT_FOLDER_NAME}/{INPUT_FILENAMES_PREFIX}_stage3.jsonl",
 )
@@ -552,7 +552,7 @@ async def main():
             debug_print(f"[FAIL][STAGE4] {stage4_result.error_message}")
 
     storage.client.fput_object(
-        bucket_name=INPUT_FOLDER_NAME,
+        bucket_name='silver_data',
         object_name=f"{INPUT_FILENAMES_PREFIX}_stage4.jsonl",
         file_path=OUTPUT_FILE,
     )

@@ -12,7 +12,7 @@ INPUT_FILENAMES_PREFIX = "jimmyl02_postmortems"
 
 storage = MinIOStorage()
 storage.client.fget_object(
-    bucket_name=INPUT_FOLDER_NAME,
+    bucket_name='silver_data',
     object_name=f"{INPUT_FILENAMES_PREFIX}.jsonl",
     file_path=f"{INPUT_FOLDER_NAME}/{INPUT_FILENAMES_PREFIX}_stage6.jsonl",
 )
@@ -252,7 +252,7 @@ def main():
         output_count += 1
 
     storage.client.fput_object(
-        bucket_name=INPUT_FOLDER_NAME,
+        bucket_name='silver_data',
         object_name=f"{INPUT_FILENAMES_PREFIX}_stage7.jsonl",
         file_path=OUTPUT_FILE,
     )

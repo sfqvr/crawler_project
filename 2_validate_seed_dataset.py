@@ -4,8 +4,16 @@ from minio_client import MinIOStorage
 
 # Задаем путь к файлу относительно корня скрипта
 
+INPUT_FOLDER_NAME = "parsed_jimmyl02"
+INPUT_FILENAMES_PREFIX = "jimmyl02_postmortems"
 
-FILE_PATH = Path("parsed_danluu/danluu_postmortems.jsonl")
+storage = MinIOStorage()
+storage.client.fget_object(
+    bucket_name='raw_data',
+    object_name=f"{INPUT_FILENAMES_PREFIX}.jsonl",
+    file_path=f"{INPUT_FOLDER_NAME}/{INPUT_FILENAMES_PREFIX}.jsonl",
+)
+FILE_PATH = Path(f"{INPUT_FOLDER_NAME}/{INPUT_FILENAMES_PREFIX}.jsonl")
 
 
 
