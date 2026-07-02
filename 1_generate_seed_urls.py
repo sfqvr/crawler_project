@@ -17,8 +17,8 @@ OUTPUT_FOLDER_NAME = "parsed_jimmyl02"
 OUTPUT_FILENAMES_PREFIX = "jimmyl02_postmortems"
 
 storage = MinIOStorage()
-storage.create_bucket('raw_data')
-storage.create_bucket('silver_data')
+storage.create_bucket('raw-data')
+storage.create_bucket('silver-data')
 # litellm._turn_on_debug()
 
 # 1. Модель.
@@ -79,7 +79,7 @@ async def main():
             )
             
             storage.client.fput_object(
-                bucket_name='raw_data',
+                bucket_name='raw-data',
                 object_name=f"{OUTPUT_FILENAMES_PREFIX}.jsonl",
                 file_path=f"{OUTPUT_FOLDER_NAME}/{OUTPUT_FILENAMES_PREFIX}.jsonl",
             )

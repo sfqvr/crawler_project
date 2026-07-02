@@ -9,7 +9,7 @@ INPUT_FILENAMES_PREFIX = "jimmyl02_postmortems"
 
 storage = MinIOStorage()
 storage.client.fget_object(
-    bucket_name='raw_data',
+    bucket_name='raw-data',
     object_name=f"{INPUT_FILENAMES_PREFIX}.jsonl",
     file_path=f"{INPUT_FOLDER_NAME}/{INPUT_FILENAMES_PREFIX}.jsonl",
 )
