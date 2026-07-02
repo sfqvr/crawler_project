@@ -18,6 +18,7 @@ OUTPUT_FILENAMES_PREFIX = "jimmyl02_postmortems"
 
 storage = MinIOStorage()
 storage.create_bucket('raw_data')
+storage.create_bucket('silver_data')
 # litellm._turn_on_debug()
 
 # 1. Модель.
