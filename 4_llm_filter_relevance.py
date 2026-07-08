@@ -24,13 +24,13 @@ INPUT_FOLDER_NAME = "parsed_jimmyl02"
 INPUT_FILENAMES_PREFIX = "jimmyl02_postmortems"
 
 storage = MinIOStorage()
-storage.client.fget_object(
-    bucket_name='raw-data',
-    object_name=f"{INPUT_FILENAMES_PREFIX}_stage3.jsonl",
-    file_path=f"{INPUT_FOLDER_NAME}/{INPUT_FILENAMES_PREFIX}_stage3.jsonl",
-)
+# storage.client.fget_object(
+#     bucket_name='raw-data',
+#     object_name=f"{INPUT_FILENAMES_PREFIX}_stage3.jsonl",
+#     file_path=f"{INPUT_FOLDER_NAME}/{INPUT_FILENAMES_PREFIX}_stage3.jsonl",
+# )
 
-INPUT_FILE = Path(f"{INPUT_FOLDER_NAME}/{INPUT_FILENAMES_PREFIX}_stage3.jsonl")
+# INPUT_FILE = Path(f"{INPUT_FOLDER_NAME}/{INPUT_FILENAMES_PREFIX}_stage3.jsonl")
 OUTPUT_FILE = Path(f"{INPUT_FOLDER_NAME}/{INPUT_FILENAMES_PREFIX}_stage4.jsonl")
 
 # INPUT_FILE = Path("parsed_danluu/danluu_postmortems_with_html.jsonl")
@@ -477,7 +477,9 @@ async def main():
     ensure_parent_dir(OUTPUT_FILE)
     print_output_schema()
 
-    df = load_input_df(INPUT_FILE)
+    # df = load_input_df(INPUT_FILE)
+    df = storage.load_dataframe('raw-data', INPUT_FILENAMES_PREFIX)
+
 
     if LIMIT_ROWS is not None:
         df = df.head(LIMIT_ROWS).copy()
@@ -519,7 +521,9 @@ async def main():
         # Если stage3 провалился — stage4 = null
         if build_stage4_null_reason(row_dict):
             output_row["stage4"] = None
-            append_jsonl_row(OUTPUT_FILE, output_row)
+            # append_jsonl_row(OUTPUT_FILE, output_row)
+            storage.append_json('silver-data', INPUT_FILENAMES_PREFIX, output_row)
+
             stage3_null_count += 1
             debug_print("[SKIP][STAGE3] stage4=null, потому что stage3 crawl неуспешен или cleaned_html пустой")
             continue
@@ -527,7 +531,9 @@ async def main():
         stage4_result = run_stage4_for_row(agent, row_dict)
         output_row["stage4"] = stage4_result.model_dump()
 
-        append_jsonl_row(OUTPUT_FILE, output_row)
+        # append_jsonl_row(OUTPUT_FILE, output_row)
+        storage.append_json('silver-data', INPUT_FILENAMES_PREFIX, output_row)
+
 
         if stage4_result.success and stage4_result.assessment is not None:
             llm_success_count += 1
@@ -551,11 +557,11 @@ async def main():
             llm_fail_count += 1
             debug_print(f"[FAIL][STAGE4] {stage4_result.error_message}")
 
-    storage.client.fput_object(
-        bucket_name='silver-data',
-        object_name=f"{INPUT_FILENAMES_PREFIX}_stage4.jsonl",
-        file_path=OUTPUT_FILE,
-    )
+    # storage.client.fput_object(
+    #     bucket_name='silver-data',
+    #     object_name=f"{INPUT_FILENAMES_PREFIX}_stage4.jsonl",
+    #     file_path=OUTPUT_FILE,
+    # )
 
     debug_print("\n" + "=" * 80)
     debug_print("=== ГОТОВО ===")
@@ -566,7 +572,7 @@ async def main():
     debug_print(f"Relevant: {relevant_count}")
     debug_print(f"Irrelevant: {irrelevant_count}")
     debug_print(f"Document kinds: {dict(kind_counter)}")
-    debug_print(f"Файл: {OUTPUT_FILE}")
+    # debug_print(f"Файл: {OUTPUT_FILE}")
 
 
 if __name__ == "__main__":

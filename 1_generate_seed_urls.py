@@ -1,3 +1,5 @@
+from hashlib import sha256
+from io import BytesIO
 import os
 import asyncio
 import json
@@ -71,18 +73,21 @@ async def main():
             for item in data[:3]:
                 print(item)
 
-            export_data(
-                data=data, 
-                folder_name=OUTPUT_FOLDER_NAME,
-                jsonl_filename=f"{OUTPUT_FILENAMES_PREFIX}.jsonl",
-                html_filename=f"{OUTPUT_FILENAMES_PREFIX}.html"
-            )
+            # export_data(
+            #     data=data, 
+            #     folder_name=OUTPUT_FOLDER_NAME,
+            #     jsonl_filename=f"{OUTPUT_FILENAMES_PREFIX}.jsonl",
+            #     html_filename=f"{OUTPUT_FILENAMES_PREFIX}.html"
+            # )
             
-            storage.client.fput_object(
-                bucket_name='raw-data',
-                object_name=f"{OUTPUT_FILENAMES_PREFIX}.jsonl",
-                file_path=f"{OUTPUT_FOLDER_NAME}/{OUTPUT_FILENAMES_PREFIX}.jsonl",
-            )
+            # storage.client.fput_object(
+            #     bucket_name='raw-data',
+            #     object_name=f"{OUTPUT_FILENAMES_PREFIX}.jsonl",
+            #     file_path=f"{OUTPUT_FOLDER_NAME}/{OUTPUT_FILENAMES_PREFIX}.jsonl",
+            # )
+
+            for obj in data:
+                storage.append_json('raw-data', OUTPUT_FILENAMES_PREFIX, obj)
                     
             llm_strategy.show_usage()
         else:

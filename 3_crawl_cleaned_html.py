@@ -16,13 +16,13 @@ INPUT_FOLDER_NAME = "parsed_jimmyl02"
 INPUT_FILENAMES_PREFIX = "jimmyl02_postmortems"
 
 storage = MinIOStorage()
-storage.client.fget_object(
-    bucket_name='raw-data',
-    object_name=f"{INPUT_FILENAMES_PREFIX}.jsonl",
-    file_path=f"{INPUT_FOLDER_NAME}/{INPUT_FILENAMES_PREFIX}.jsonl",
-)
+# storage.client.fget_object(
+#     bucket_name='raw-data',
+#     object_name=f"{INPUT_FILENAMES_PREFIX}.jsonl",
+#     file_path=f"{INPUT_FOLDER_NAME}/{INPUT_FILENAMES_PREFIX}.jsonl",
+# )
 
-INPUT_FILE = Path(f"{INPUT_FOLDER_NAME}/{INPUT_FILENAMES_PREFIX}.jsonl")
+# INPUT_FILE = Path(f"{INPUT_FOLDER_NAME}/{INPUT_FILENAMES_PREFIX}.jsonl")
 OUTPUT_FILE = Path(f"{INPUT_FOLDER_NAME}/{INPUT_FILENAMES_PREFIX}_stage3.jsonl")
 
 LIMIT_ROWS: Optional[int] = None
@@ -584,7 +584,8 @@ async def main():
     ensure_parent_dir(OUTPUT_FILE)
     print_output_schema()
 
-    df = load_input_df(INPUT_FILE)
+    # df = load_input_df(INPUT_FILE)
+    df = storage.load_dataframe('raw-data', INPUT_FILENAMES_PREFIX)
 
     if LIMIT_ROWS is not None:
         df = df.head(LIMIT_ROWS).copy()
@@ -645,7 +646,8 @@ async def main():
             )
 
             for output_row in primary_success_rows:
-                append_jsonl_row(OUTPUT_FILE, output_row)
+                # append_jsonl_row(OUTPUT_FILE, output_row)
+                storage.append_json('raw-data', INPUT_FILENAMES_PREFIX, output_row)
                 success_count += 1
 
             if primary_failed_rows:
@@ -661,27 +663,31 @@ async def main():
                 )
 
                 for output_row in fallback_success_rows:
-                    append_jsonl_row(OUTPUT_FILE, output_row)
+                    # append_jsonl_row(OUTPUT_FILE, output_row)
+                    storage.append_json('raw-data', INPUT_FILENAMES_PREFIX, output_row)
+
                     success_count += 1
 
                 for output_row in fallback_failed_rows:
-                    append_jsonl_row(OUTPUT_FILE, output_row)
+                    # append_jsonl_row(OUTPUT_FILE, output_row)
+                    storage.append_json('raw-data', INPUT_FILENAMES_PREFIX, output_row)
+
                     fail_count += 1
             else:
                 debug_print(f"[BATCH {batch_id}] Fallback не нужен.")
 
-    storage.client.fput_object(
-        bucket_name='raw-data',
-        object_name=f"{INPUT_FILENAMES_PREFIX}_stage3.jsonl",
-        file_path=OUTPUT_FILE,
-    )
+    # storage.client.fput_object(
+    #     bucket_name='raw-data',
+    #     object_name=f"{INPUT_FILENAMES_PREFIX}_stage3.jsonl",
+    #     file_path=OUTPUT_FILE,
+    # )
 
     debug_print("\n" + "=" * 80)
     debug_print("=== ГОТОВО ===")
     debug_print(f"Успешно: {success_count}")
     debug_print(f"С ошибкой: {fail_count}")
     debug_print(f"Пропущено: {skipped_count}")
-    debug_print(f"Файл: {OUTPUT_FILE}")
+    # debug_print(f"Файл: {OUTPUT_FILE}")
     debug_print(f"Общее время: {round(time.perf_counter() - started_total_perf, 3)} сек")
 
 

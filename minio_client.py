@@ -1,5 +1,7 @@
+from hashlib import sha256
 from io import BytesIO
 import json
+import pandas as pd
 
 from minio import Minio
 from minio.error import S3Error
@@ -23,6 +25,23 @@ class MinIOStorage:
     def create_bucket(self, bucket: str):
         if not self.client.bucket_exists(bucket):
             self.client.make_bucket(bucket)
+
+    def load_dataframe(self, bucket_name: str, prefix: str) -> pd.DataFrame:
+        rows = []
+
+        for obj in self.client.list_objects(
+            bucket_name,
+            prefix=prefix,
+            recursive=True,
+        ):
+            response = self.client.get_object(bucket_name, obj.object_name)
+            try:
+                rows.append(json.load(response))
+            finally:
+                response.close()
+                response.release_conn()
+
+        return pd.DataFrame(rows)
     
     def create_jsonl(self, bucket: str, object_name: str):
         data = BytesIO(b"")
@@ -35,24 +54,16 @@ class MinIOStorage:
             content_type="application/json",
         )
     
-    def append_json(self, bucket, object_name, obj):
-
-        line = json.dumps(obj, ensure_ascii=False) + "\n"
-
-        try:
-            response = self.client.get_object(bucket, object_name)
-            old_data = response.read()
-
-        except S3Error:
-            old_data = b""
-
-        new_data = old_data + line.encode("utf-8")
+    def append_json(self, bucket_name: str, prefix: str, obj) -> None:
+        url = obj["url"]
+        document_id = sha256(url.encode("utf-8")).hexdigest()
+        payload = json.dumps(obj, ensure_ascii=False).encode("utf-8")
 
         self.client.put_object(
-            bucket,
-            object_name,
-            BytesIO(new_data),
-            len(new_data),
+            bucket_name=bucket_name,
+            object_name=f"{prefix}/{document_id}.json",
+            data=BytesIO(payload),
+            length=len(payload),
             content_type="application/json",
         )
 
