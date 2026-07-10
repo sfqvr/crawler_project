@@ -24,6 +24,7 @@ dependencies = [
     "langsmith>=0.7.14",
     "markdown>=3.10.2",
     "mcp>=1.26.0",
+    "minio>=7.2.20",
     "pandas>=3.0.1",
     "pydantic>=2.12.5",
     "qdrant-client>=1.17.1",
