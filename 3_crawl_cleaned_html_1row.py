@@ -286,7 +286,7 @@ async def process_row(
 
 async def main():
     if len(sys.argv) < 2:
-        print("Usage: script1.py <json_string>")
+        print("Usage: 3_crawl_cleaned_html_1row.py <json_string>")
         sys.exit(1)
 
     row: dict = json.loads(sys.argv[1])
