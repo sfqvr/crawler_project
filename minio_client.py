@@ -43,7 +43,7 @@ class MinIOStorage:
 
         return pd.DataFrame(rows)
     
-    def create_jsonl(self, bucket: str, object_name: str):
+    # def create_jsonl(self, bucket: str, object_name: str):
         data = BytesIO(b"")
 
         self.client.put_object(
@@ -67,12 +67,15 @@ class MinIOStorage:
             content_type="application/json",
         )
 
-    def read_jsonl(self, bucket, object_name):
+    def append_html(self, bucket_name: str, prefix: str, url: str, html: str, ) -> None:
+        document_id = sha256(url.encode("utf-8")).hexdigest()
+        payload = html.encode("utf-8")
 
-        response = self.client.get_object(bucket, object_name)
+        self.client.put_object(
+            bucket_name=bucket_name,
+            object_name=f"{prefix}/{document_id}.html",
+            data=BytesIO(payload),
+            length=len(payload),
+            content_type="text/html; charset=utf-8",
+        )
 
-        for line in response:
-
-            if line.strip():
-
-                yield json.loads(line)
