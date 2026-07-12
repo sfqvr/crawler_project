@@ -447,6 +447,8 @@ async def main():
     debug_print("=== ГОТОВО ===")
     debug_print(f"Успех: {stage4_result.success}")
 
+    print("RESULT_JSON:" + json.dumps(output_row, ensure_ascii=False))
+
 
 if __name__ == "__main__":
     asyncio.run(main())

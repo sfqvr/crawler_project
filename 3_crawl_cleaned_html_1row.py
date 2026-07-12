@@ -325,6 +325,8 @@ async def main():
         debug_print(f"Ошибка: {output_row['crawl_error_message']}")
     debug_print(f"Общее время: {round(time.perf_counter() - started_perf, 3)} сек")
 
+    print("RESULT_JSON:" + json.dumps(output_row, ensure_ascii=False))
+
 
 if __name__ == "__main__":
     asyncio.run(main())
