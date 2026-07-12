@@ -8,7 +8,7 @@ from datetime import datetime
 from prefect import flow, task
 from prefect.logging import get_run_logger
 
-PROJECT_DIR = Path(__file__).resolve().parent / "my_crawler_project"
+PROJECT_DIR = Path(__file__).resolve().parent.parent
 LOG_DIR = PROJECT_DIR / "logs"
 
 LOG_DIR.mkdir(exist_ok=True)

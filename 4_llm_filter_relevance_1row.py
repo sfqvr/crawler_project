@@ -1,11 +1,9 @@
 import asyncio
 import json
-from collections import Counter
+import sys
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Literal, Optional
 
-import pandas as pd
 from pydantic import BaseModel, Field
 from langchain.chat_models import init_chat_model
 from langchain.agents import create_agent
@@ -24,20 +22,7 @@ INPUT_FOLDER_NAME = "parsed_jimmyl02"
 INPUT_FILENAMES_PREFIX = "jimmyl02_postmortems"
 
 storage = MinIOStorage()
-# storage.client.fget_object(
-#     bucket_name='raw-data',
-#     object_name=f"{INPUT_FILENAMES_PREFIX}_stage3.jsonl",
-#     file_path=f"{INPUT_FOLDER_NAME}/{INPUT_FILENAMES_PREFIX}_stage3.jsonl",
-# )
 
-# INPUT_FILE = Path(f"{INPUT_FOLDER_NAME}/{INPUT_FILENAMES_PREFIX}_stage3.jsonl")
-OUTPUT_FILE = Path(f"{INPUT_FOLDER_NAME}/{INPUT_FILENAMES_PREFIX}_stage4.jsonl")
-
-# INPUT_FILE = Path("parsed_danluu/danluu_postmortems_with_html.jsonl")
-# OUTPUT_FILE = Path("parsed_danluu/danluu_postmortems_stage4.jsonl")
-
-LIMIT_ROWS: Optional[int] = None
-RESUME_FROM_OUTPUT = False
 DEBUG = True
 
 # LM Studio / OpenAI-compatible endpoint
@@ -65,72 +50,6 @@ def now_iso_utc() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def ensure_parent_dir(path: Path) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-
-
-def load_input_df(path: Path) -> pd.DataFrame:
-    if not path.exists():
-        raise FileNotFoundError(f"Файл не найден: {path}")
-    return pd.read_json(path, lines=True)
-
-
-def append_jsonl_row(output_path: Path, row: dict) -> None:
-    with output_path.open("a", encoding="utf-8") as f:
-        f.write(json.dumps(row, ensure_ascii=False) + "\n")
-
-
-def load_processed_urls(output_path: Path) -> set[str]:
-    if not output_path.exists():
-        return set()
-
-    processed_urls: set[str] = set()
-    with output_path.open("r", encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                obj = json.loads(line)
-                url = obj.get("url")
-                if isinstance(url, str) and url:
-                    processed_urls.add(url)
-            except json.JSONDecodeError:
-                continue
-
-    return processed_urls
-
-
-def to_jsonable(value):
-    if value is None:
-        return None
-
-    # numpy scalar -> python scalar
-    if hasattr(value, "item") and not isinstance(value, (str, bytes)):
-        try:
-            value = value.item()
-        except Exception:
-            pass
-
-    if isinstance(value, float) and pd.isna(value):
-        return None
-
-    if isinstance(value, (str, int, float, bool)):
-        return value
-
-    if isinstance(value, dict):
-        return {str(k): to_jsonable(v) for k, v in value.items()}
-
-    if isinstance(value, list):
-        return [to_jsonable(v) for v in value]
-
-    return str(value)
-
-
-def sanitize_row_dict(row: pd.Series) -> dict:
-    return {str(k): to_jsonable(v) for k, v in row.to_dict().items()}
-
-
 def extract_final_chat_message(agent_result) -> str:
     """
     Пытаемся достать последнее текстовое сообщение модели из result["messages"].
@@ -152,7 +71,7 @@ def extract_final_chat_message(agent_result) -> str:
 
 def print_output_schema() -> None:
     print("=" * 80)
-    print("=== OUTPUT JSONL SCHEMA (stage 4) ===")
+    print("=== OUTPUT SCHEMA (stage 4) ===")
     print("Root level: same fields as stage 3 output + one new field:")
     print("stage4: object | null")
     print()
@@ -474,105 +393,61 @@ def run_stage4_for_row(agent, row: dict) -> Stage4Result:
 # MAIN
 # =============================================================================
 async def main():
-    ensure_parent_dir(OUTPUT_FILE)
+    if len(sys.argv) < 2:
+        print("Usage: 4_llm_filter_relevance_1row.py <json_string>")
+        sys.exit(1)
+
+    row_dict: dict = json.loads(sys.argv[1])
+
+    if "url" not in row_dict:
+        print("Error: input JSON must contain a 'url' field")
+        sys.exit(1)
+
     print_output_schema()
 
-    # df = load_input_df(INPUT_FILE)
-    df = storage.load_dataframe('raw-data', INPUT_FILENAMES_PREFIX)
+    url = row_dict.get("url", "")
 
+    debug_print("\n" + "=" * 80)
+    debug_print(f"[START] {row_dict.get('name', '')}")
+    debug_print(f"[URL] {url}")
 
-    if LIMIT_ROWS is not None:
-        df = df.head(LIMIT_ROWS).copy()
+    output_row = dict(row_dict)
 
-    debug_print(f"[INFO] Всего строк во входном файле: {len(df)}")
+    # Если stage3 провалился — stage4 = null
+    if build_stage4_null_reason(row_dict):
+        output_row["stage4"] = None
+        storage.append_json('silver-data', INPUT_FILENAMES_PREFIX, output_row)
 
-    processed_urls = set()
-    if RESUME_FROM_OUTPUT:
-        processed_urls = load_processed_urls(OUTPUT_FILE)
-        debug_print(f"[INFO] Уже обработано URL в output: {len(processed_urls)}")
+        debug_print("[SKIP][STAGE3] stage4=null, потому что stage3 crawl неуспешен или cleaned_html пустой")
+        debug_print("\n" + "=" * 80)
+        debug_print("=== ГОТОВО ===")
+        return
 
     model = build_model()
     agent = build_agent(model)
 
-    total = len(df)
-    llm_success_count = 0
-    llm_fail_count = 0
-    stage3_null_count = 0
-    skipped_count = 0
-    relevant_count = 0
-    irrelevant_count = 0
-    kind_counter = Counter()
+    stage4_result = run_stage4_for_row(agent, row_dict)
+    output_row["stage4"] = stage4_result.model_dump()
 
-    for i, row in df.iterrows():
-        row_dict = sanitize_row_dict(row)
-        url = row_dict.get("url", "")
+    storage.append_json('silver-data', INPUT_FILENAMES_PREFIX, output_row)
 
-        if RESUME_FROM_OUTPUT and isinstance(url, str) and url in processed_urls:
-            skipped_count += 1
-            debug_print(f"[SKIP] [{i+1}/{total}] Уже есть в output: {url}")
-            continue
-
-        debug_print("\n" + "=" * 80)
-        debug_print(f"[START] [{i+1}/{total}] {row_dict.get('name', '')}")
-        debug_print(f"[URL] {url}")
-
-        output_row = dict(row_dict)
-
-        # Если stage3 провалился — stage4 = null
-        if build_stage4_null_reason(row_dict):
-            output_row["stage4"] = None
-            # append_jsonl_row(OUTPUT_FILE, output_row)
-            storage.append_json('silver-data', INPUT_FILENAMES_PREFIX, output_row)
-
-            stage3_null_count += 1
-            debug_print("[SKIP][STAGE3] stage4=null, потому что stage3 crawl неуспешен или cleaned_html пустой")
-            continue
-
-        stage4_result = run_stage4_for_row(agent, row_dict)
-        output_row["stage4"] = stage4_result.model_dump()
-
-        # append_jsonl_row(OUTPUT_FILE, output_row)
-        storage.append_json('silver-data', INPUT_FILENAMES_PREFIX, output_row)
-
-
-        if stage4_result.success and stage4_result.assessment is not None:
-            llm_success_count += 1
-            assessment = stage4_result.assessment
-
-            if assessment.is_relevant:
-                relevant_count += 1
-            else:
-                irrelevant_count += 1
-
-            kind_counter[assessment.document_kind] += 1
-
-            debug_print(
-                "[OK][STAGE4] "
-                f"relevant={assessment.is_relevant}, "
-                f"kind={assessment.document_kind}, "
-                f"markdown={assessment.can_extract_markdown}, "
-                f"confidence={assessment.confidence:.2f}"
-            )
-        else:
-            llm_fail_count += 1
-            debug_print(f"[FAIL][STAGE4] {stage4_result.error_message}")
-
-    # storage.client.fput_object(
-    #     bucket_name='silver-data',
-    #     object_name=f"{INPUT_FILENAMES_PREFIX}_stage4.jsonl",
-    #     file_path=OUTPUT_FILE,
-    # )
+    if stage4_result.success and stage4_result.assessment is not None:
+        assessment = stage4_result.assessment
+        debug_print(
+            "[OK][STAGE4] "
+            f"relevant={assessment.is_relevant}, "
+            f"kind={assessment.document_kind}, "
+            f"markdown={assessment.can_extract_markdown}, "
+            f"confidence={assessment.confidence:.2f}"
+        )
+    else:
+        debug_print(f"[FAIL][STAGE4] {stage4_result.error_message}")
 
     debug_print("\n" + "=" * 80)
     debug_print("=== ГОТОВО ===")
-    debug_print(f"LLM success: {llm_success_count}")
-    debug_print(f"LLM fail: {llm_fail_count}")
-    debug_print(f"stage4 = null из-за stage3: {stage3_null_count}")
-    debug_print(f"Пропущено по resume: {skipped_count}")
-    debug_print(f"Relevant: {relevant_count}")
-    debug_print(f"Irrelevant: {irrelevant_count}")
-    debug_print(f"Document kinds: {dict(kind_counter)}")
-    # debug_print(f"Файл: {OUTPUT_FILE}")
+    debug_print(f"Успех: {stage4_result.success}")
+
+    print("RESULT_JSON:" + json.dumps(output_row, ensure_ascii=False))
 
 
 if __name__ == "__main__":
