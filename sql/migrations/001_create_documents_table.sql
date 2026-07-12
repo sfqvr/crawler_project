@@ -1,9 +1,10 @@
 CREATE TABLE IF NOT EXISTS documents (
     url TEXT PRIMARY KEY,
+
     name TEXT,
     description TEXT,
     error BOOLEAN DEFAULT FALSE,
-    
+
     cleaned_html TEXT,
     crawl_success BOOLEAN,
     crawl_error_message TEXT,
@@ -25,7 +26,7 @@ CREATE TABLE IF NOT EXISTS documents (
     debug_status_code INT,
     debug_match_method TEXT,
     debug_batch_id INT,
-    
+
     stage4_success BOOLEAN,
     stage4_error_message TEXT,
     stage4_model_name TEXT,
@@ -89,19 +90,24 @@ CREATE TABLE IF NOT EXISTS documents (
     tech_stack_text TEXT,
     key_terms_text TEXT,
     embedding_text TEXT,
-
+    
     status TEXT DEFAULT 'new',
     content_hash TEXT,
-
     discovered_at TIMESTAMP DEFAULT NOW(),
     processed_at TIMESTAMP,
     updated_at TIMESTAMP DEFAULT NOW(),
     retry_count INT DEFAULT 0,
     last_error TEXT,
     last_error_at TIMESTAMP,
-
+    
+    raw_html_path TEXT,      
+    markdown_path TEXT,      
+    
     CONSTRAINT valid_status CHECK (status IN ('new', 'in_progress', 'error', 'success', 'skipped'))
 );
 
-COMMENT ON COLUMN documents.status IS 'new | in_progress | error | success | skipped';
-COMMENT ON COLUMN documents.document_kind IS 'postmortem | incident_report | status_update | irrelevant | unknown';
+CREATE INDEX IF NOT EXISTS idx_documents_status ON documents(status);
+CREATE INDEX IF NOT EXISTS idx_documents_url ON documents(url);
+CREATE INDEX IF NOT EXISTS idx_documents_document_kind ON documents(document_kind);
+CREATE INDEX IF NOT EXISTS idx_documents_company ON documents(company);
+CREATE INDEX IF NOT EXISTS idx_documents_is_relevant ON documents(is_relevant);
