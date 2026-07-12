@@ -477,4 +477,58 @@ class Database:
         result = self.execute_one(query, (url,))
         return result is not None and result[0] is True
 
+        def get_repo_hash(self, repo_url: str) -> Optional[str]:
+        """Получает сохраненный SHA/хэш репозитория"""
+        query = "SELECT file_sha FROM repo_sources WHERE repo_url = %s"
+        result = self.execute_one(query, (repo_url,))
+        return result[0] if result else None
+    
+    def update_repo_hash(self, repo_url: str, file_sha: str) -> None:
+        """Обновляет хэш репозитория"""
+        query = """
+            INSERT INTO repo_sources (repo_url, file_sha, last_scanned_at)
+            VALUES (%s, %s, NOW())
+            ON CONFLICT (repo_url) DO UPDATE SET
+                file_sha = EXCLUDED.file_sha,
+                last_scanned_at = NOW(),
+                updated_at = NOW()
+        """
+        self.execute(query, (repo_url, file_sha))
+    
+    def get_processed_urls(self) -> set:
+        """Получает все URL со статусом 'success'"""
+        query = "SELECT url FROM documents WHERE status = 'success'"
+        result = self.execute(query)
+        return {row[0] for row in result} if result else set()
+    
+    def get_urls_by_status(self, status: str) -> List[str]:
+        """Получает URL по статусу"""
+        query = "SELECT url FROM documents WHERE status = %s"
+        result = self.execute(query, (status,))
+        return [row[0] for row in result] if result else []
+    
+    def update_status(self, url: str, status: str, error_message: str = None) -> None:
+        """Обновляет статус документа"""
+        query = """
+            UPDATE documents 
+            SET status = %s, 
+                updated_at = NOW(),
+                last_error = COALESCE(%s, last_error),
+                last_error_at = CASE WHEN %s IS NOT NULL THEN NOW() ELSE last_error_at END,
+                retry_count = CASE WHEN %s = 'error' THEN retry_count + 1 ELSE retry_count END
+            WHERE url = %s
+        """
+        self.execute(query, (status, error_message, error_message, status, url))
+    
+    def mark_as_processed(self, url: str) -> None:
+        """Помечает документ как полностью обработанный"""
+        query = """
+            UPDATE documents 
+            SET status = 'success', 
+                processed_at = NOW(),
+                updated_at = NOW()
+            WHERE url = %s
+        """
+        self.execute(query, (url,))
+
 db = Database()
