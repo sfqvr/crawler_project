@@ -1,21 +1,8 @@
 import pandas as pd
 from pathlib import Path
-from minio_client import MinIOStorage
 
 # Задаем путь к файлу относительно корня скрипта
-
-INPUT_FOLDER_NAME = "parsed_jimmyl02"
-INPUT_FILENAMES_PREFIX = "jimmyl02_postmortems"
-
-storage = MinIOStorage()
-storage.client.fget_object(
-    bucket_name='raw-data',
-    object_name=f"{INPUT_FILENAMES_PREFIX}.jsonl",
-    file_path=f"{INPUT_FOLDER_NAME}/{INPUT_FILENAMES_PREFIX}.jsonl",
-)
-FILE_PATH = Path(f"{INPUT_FOLDER_NAME}/{INPUT_FILENAMES_PREFIX}.jsonl")
-
-
+FILE_PATH = Path("parsed_danluu/danluu_postmortems.jsonl")
 
 def main():
     # Небольшая проверка, чтобы скрипт понятно ругался, если файла нет на месте

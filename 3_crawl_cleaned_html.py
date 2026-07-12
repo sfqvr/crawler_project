@@ -1,5 +1,6 @@
 import asyncio
 import json
+import sys
 import time
 from collections import defaultdict, deque
 from datetime import datetime, timezone
@@ -9,10 +10,21 @@ from typing import Optional
 import pandas as pd
 from crawl4ai import AsyncWebCrawler, CacheMode
 from crawl4ai.async_configs import BrowserConfig, CrawlerRunConfig
+from minio_client import MinIOStorage
 
 
-INPUT_FILE = Path("parsed_danluu/danluu_postmortems.jsonl")
-OUTPUT_FILE = Path("parsed_danluu/danluu_postmortems_with_html.jsonl")
+INPUT_FOLDER_NAME = "parsed_jimmyl02"
+INPUT_FILENAMES_PREFIX = "test" #"jimmyl02_postmortems"
+
+storage = MinIOStorage()
+# storage.client.fget_object(
+#     bucket_name='raw-data',
+#     object_name=f"{INPUT_FILENAMES_PREFIX}.jsonl",
+#     file_path=f"{INPUT_FOLDER_NAME}/{INPUT_FILENAMES_PREFIX}.jsonl",
+# )
+
+# INPUT_FILE = Path(f"{INPUT_FOLDER_NAME}/{INPUT_FILENAMES_PREFIX}.jsonl")
+OUTPUT_FILE = Path(f"{INPUT_FOLDER_NAME}/{INPUT_FILENAMES_PREFIX}_stage3.jsonl")
 
 LIMIT_ROWS: Optional[int] = None
 RESUME_FROM_OUTPUT = False
@@ -570,15 +582,25 @@ async def fallback_pass_for_batch(
 
 
 async def main():
+    if len(sys.argv) < 2:
+        print("Usage: script1.py <json_string>")
+        sys.exit(1)
+
+    
+    data = json.loads(sys.argv[1])
+        
+
     ensure_parent_dir(OUTPUT_FILE)
     print_output_schema()
 
-    df = load_input_df(INPUT_FILE)
+    # df = load_input_df(INPUT_FILE)
+    # df = storage.load_dataframe('raw-data', INPUT_FILENAMES_PREFIX)
+    # df = pd.read_json(sys.argv[1])
 
-    if LIMIT_ROWS is not None:
-        df = df.head(LIMIT_ROWS).copy()
+    # if LIMIT_ROWS is not None:
+    #     df = df.head(LIMIT_ROWS).copy()
 
-    debug_print(f"[INFO] Всего строк во входном файле: {len(df)}")
+    # debug_print(f"[INFO] Всего строк во входном файле: {len(df)}")
     debug_print(f"[INFO] Параллельность arun_many (semaphore_count): {SEMAPHORE_COUNT}")
     debug_print(f"[INFO] Размер batch: {BATCH_SIZE}")
 
@@ -587,24 +609,24 @@ async def main():
         processed_urls = load_processed_urls(OUTPUT_FILE)
         debug_print(f"[INFO] Уже обработано URL в output: {len(processed_urls)}")
 
-    rows_to_process: list[dict] = []
+    rows_to_process = [data] 
     skipped_count = 0
 
-    for source_index, row in df.iterrows():
-        row_dict = {
-            "source_index": int(source_index),
-            "name": row["name"],
-            "url": row["url"],
-            "description": row["description"],
-            "error": bool(row["error"]),
-        }
+    # for source_index, row in df.iterrows():
+    #     row_dict = {
+    #         "source_index": int(source_index),
+    #         "name": row["name"],
+    #         "url": row["url"],
+    #         "description": row["description"],
+    #         "error": bool(row["error"]),
+    #     }
 
-        if RESUME_FROM_OUTPUT and row_dict["url"] in processed_urls:
-            skipped_count += 1
-            debug_print(f"[SKIP] Уже есть в output: {row_dict['url']}")
-            continue
+    #     if RESUME_FROM_OUTPUT and row_dict["url"] in processed_urls:
+    #         skipped_count += 1
+    #         debug_print(f"[SKIP] Уже есть в output: {row_dict['url']}")
+    #         continue
 
-        rows_to_process.append(row_dict)
+    #     rows_to_process.append(row_dict)
 
     debug_print(f"[INFO] К обработке осталось: {len(rows_to_process)}")
     debug_print(f"[INFO] Пропущено по resume: {skipped_count}")
@@ -634,7 +656,8 @@ async def main():
             )
 
             for output_row in primary_success_rows:
-                append_jsonl_row(OUTPUT_FILE, output_row)
+                # append_jsonl_row(OUTPUT_FILE, output_row)
+                storage.append_html('raw-data', INPUT_FILENAMES_PREFIX, output_row["url"], output_row["cleaned_html"])
                 success_count += 1
 
             if primary_failed_rows:
@@ -650,21 +673,30 @@ async def main():
                 )
 
                 for output_row in fallback_success_rows:
-                    append_jsonl_row(OUTPUT_FILE, output_row)
+                    # append_jsonl_row(OUTPUT_FILE, output_row)
+                    storage.append_html('raw-data', INPUT_FILENAMES_PREFIX, output_row["url"], output_row["cleaned_html"])
                     success_count += 1
 
                 for output_row in fallback_failed_rows:
-                    append_jsonl_row(OUTPUT_FILE, output_row)
+                    # append_jsonl_row(OUTPUT_FILE, output_row)
+                    storage.append_html('raw-data', INPUT_FILENAMES_PREFIX, output_row["url"], output_row["cleaned_html"])
+
                     fail_count += 1
             else:
                 debug_print(f"[BATCH {batch_id}] Fallback не нужен.")
+
+    # storage.client.fput_object(
+    #     bucket_name='raw-data',
+    #     object_name=f"{INPUT_FILENAMES_PREFIX}_stage3.jsonl",
+    #     file_path=OUTPUT_FILE,
+    # )
 
     debug_print("\n" + "=" * 80)
     debug_print("=== ГОТОВО ===")
     debug_print(f"Успешно: {success_count}")
     debug_print(f"С ошибкой: {fail_count}")
     debug_print(f"Пропущено: {skipped_count}")
-    debug_print(f"Файл: {OUTPUT_FILE}")
+    # debug_print(f"Файл: {OUTPUT_FILE}")
     debug_print(f"Общее время: {round(time.perf_counter() - started_total_perf, 3)} сек")
 
 
