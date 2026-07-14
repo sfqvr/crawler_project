@@ -58,7 +58,7 @@ class Database:
         with self.get_cursor(dict_cursor) as cur:
             cur.execute(query, params)
             return cur.fetchone()
-    
+
     def create_document(self, url: str, name: str, description: str) -> bool:
         query = """
             INSERT INTO documents (url, name, description, status, discovered_at)
@@ -71,7 +71,7 @@ class Database:
     def upsert_document_from_stage1(self, data: Dict[str, Any]) -> None:
         query = """
             INSERT INTO documents (url, name, description, error, status, discovered_at)
-            VALUES (%s, %s, %s, %s, 'new', NOW())
+            VALUES (%s, %s, %s, %s, %s, NOW())
             ON CONFLICT (url) DO UPDATE SET
                 name = EXCLUDED.name,
                 description = EXCLUDED.description,
@@ -82,7 +82,8 @@ class Database:
             data.get('url'),
             data.get('name'),
             data.get('description'),
-            data.get('error', False)
+            data.get('error', False),
+            data.get('status', 'new')
         ))
 
     def update_stage3_result(self, url: str, data: Dict[str, Any]) -> None:
@@ -142,9 +143,9 @@ class Database:
             data.get('debug_status_code'),
             data.get('debug_match_method', ''),
             data.get('debug_batch_id'),
-            data.get('crawl_success', False),  # for status
-            data.get('crawl_success', False),  # for last_error
-            data.get('crawl_error_message', ''),  # for last_error
+            data.get('crawl_success', False),
+            data.get('crawl_success', False),
+            data.get('crawl_error_message', ''),
             url
         ))
     
@@ -170,14 +171,13 @@ class Database:
             WHERE url = %s
         """
         self.execute(query, (success, status, success, error_message, success, success, url))
-    
+
     def update_stage4_result(self, url: str, data: Dict[str, Any]) -> None:
         stage4 = data.get('stage4', {})
         assessment = stage4.get('assessment', {})
         
         query = """
             UPDATE documents SET
-                -- Stage4 metadata
                 stage4_success = %s,
                 stage4_error_message = %s,
                 stage4_model_name = %s,
@@ -187,8 +187,6 @@ class Database:
                 stage4_llm_input_html_length = %s,
                 stage4_html_was_truncated = %s,
                 stage4_agent_final_message = %s,
-                
-                -- Assessment
                 is_relevant = %s,
                 can_extract_markdown = %s,
                 relevance_reason = %s,
@@ -202,7 +200,6 @@ class Database:
                 has_action_items_or_lessons_learned = %s,
                 language = %s,
                 relevance_confidence = %s,
-                
                 updated_at = NOW(),
                 status = CASE 
                     WHEN %s = true AND %s = true THEN 'in_progress'
@@ -225,7 +222,6 @@ class Database:
             stage4.get('llm_input_html_length', 0),
             stage4.get('html_was_truncated', False),
             stage4.get('agent_final_message', ''),
-            
             assessment.get('is_relevant', False),
             assessment.get('can_extract_markdown', False),
             assessment.get('reason', ''),
@@ -239,7 +235,6 @@ class Database:
             assessment.get('has_action_items_or_lessons_learned', False),
             assessment.get('language'),
             assessment.get('confidence', 0.0),
-            
             stage4.get('success', False),
             assessment.get('is_relevant', False),
             stage4.get('success', False),
@@ -293,7 +288,7 @@ class Database:
             stage5.get('error_message', ''),
             url
         ))
- 
+
     def update_stage6_result(self, url: str, data: Dict[str, Any]) -> None:
         stage6 = data.get('stage6', {})
         extraction = stage6.get('extraction', {})
@@ -302,7 +297,6 @@ class Database:
         
         query = """
             UPDATE documents SET
-                -- Stage6 metadata
                 stage6_success = %s,
                 stage6_error_message = %s,
                 stage6_model_name = %s,
@@ -312,8 +306,6 @@ class Database:
                 stage6_llm_input_markdown_length = %s,
                 stage6_markdown_was_truncated = %s,
                 stage6_agent_final_message = %s,
-                
-                -- Extraction
                 company = %s,
                 incident_date = %s,
                 short_description = %s,
@@ -326,7 +318,6 @@ class Database:
                 resolution = %s,
                 lessons_learned = %s,
                 metadata_confidence = %s,
-                
                 updated_at = NOW(),
                 status = CASE 
                     WHEN %s = true THEN 'in_progress'
@@ -348,7 +339,6 @@ class Database:
             stage6.get('llm_input_markdown_length', 0),
             stage6.get('markdown_was_truncated', False),
             stage6.get('agent_final_message', ''),
-            
             extraction.get('company'),
             extraction.get('date'),
             extraction.get('short_description', ''),
@@ -361,17 +351,13 @@ class Database:
             searchable_text.get('resolution', ''),
             searchable_text.get('lessons_learned', ''),
             extraction.get('confidence', 0.0),
-            
             stage6.get('success', False),
             stage6.get('success', False),
             stage6.get('error_message', ''),
             url
         ))
-    
+
     def update_stage7_result(self, url: str, data: Dict[str, Any]) -> None:
-        """
-        Сохраняет результаты Stage 7 (подготовка для Qdrant) в БД.
-        """
         query = """
             UPDATE documents SET
                 qdrant_point_id = %s,
@@ -389,7 +375,7 @@ class Database:
             data.get('embedding_text', ''),
             url
         ))
-    
+
     def mark_stage8_completed(self, url: str, success: bool, error_message: str = None) -> None:
         status = 'success' if success else 'error'
         query = """
@@ -415,11 +401,92 @@ class Database:
             WHERE url = %s
         """
         self.execute(query, (status, success, success, error_message, success, success, url))
+
+    def get_repo_hash(self, repo_url: str) -> Optional[str]:
+        query = "SELECT file_sha FROM repo_sources WHERE repo_url = %s"
+        result = self.execute_one(query, (repo_url,))
+        return result[0] if result else None
     
+    def update_repo_hash(self, repo_url: str, file_sha: str) -> None:
+        query = """
+            INSERT INTO repo_sources (repo_url, file_sha, last_scanned_at)
+            VALUES (%s, %s, NOW())
+            ON CONFLICT (repo_url) DO UPDATE SET
+                file_sha = EXCLUDED.file_sha,
+                last_scanned_at = NOW(),
+                updated_at = NOW()
+        """
+        self.execute(query, (repo_url, file_sha))
+
+    def get_next_document_by_status(self, status: str, next_status: str) -> Optional[Dict[str, Any]]:
+        """
+        Получает следующий документ с указанным статусом.
+        Использует FOR UPDATE SKIP LOCKED для атомарного захвата.
+        
+        Args:
+            status: Текущий статус (например, 'new')
+            next_status: Статус, в который перевести после захвата (например, 'in_progress')
+        
+        Returns:
+            Словарь с данными документа или None, если документов нет
+        """
+        query = """
+            SELECT url, name, description, cleaned_html, status
+            FROM documents
+            WHERE status = %s
+            ORDER BY discovered_at
+            LIMIT 1
+            FOR UPDATE SKIP LOCKED
+        """
+        
+        # Получаем документ
+        result = self.execute(query, (status,), dict_cursor=True)
+        
+        if not result:
+            return None
+        
+        doc = dict(result[0])
+        
+        # Обновляем статус на next_status
+        update_query = """
+            UPDATE documents 
+            SET status = %s, updated_at = NOW()
+            WHERE url = %s
+        """
+        self.execute(update_query, (next_status, doc['url']))
+        
+        # Маппинг полей
+        if 'incident_date' in doc:
+            doc['date'] = doc['incident_date']
+        
+        return doc
+    
+    def get_documents_by_status(self, status: str, limit: Optional[int] = None) -> List[Dict[str, Any]]:
+        """Получает все документы с определенным статусом"""
+        query = "SELECT * FROM documents WHERE status = %s ORDER BY discovered_at"
+        if limit is not None:
+            query += f" LIMIT {limit}"
+        
+        result = self.execute(query, (status,), dict_cursor=True)
+        return [dict(row) for row in result]
+
     def get_document_by_url(self, url: str) -> Optional[Dict[str, Any]]:
+        """
+        Получает документ по URL с маппингом полей.
+        Маппинг: incident_date → date (для совместимости с JSON)
+        """
         query = "SELECT * FROM documents WHERE url = %s"
         result = self.execute(query, (url,), dict_cursor=True)
-        return dict(result[0]) if result else None
+        
+        if not result:
+            return None
+        
+        doc = dict(result[0])
+        
+        if 'incident_date' in doc:
+            doc['date'] = doc['incident_date']
+        
+        return doc
     
     def get_documents_by_status(self, status: str) -> List[Dict[str, Any]]:
         query = "SELECT * FROM documents WHERE status = %s ORDER BY discovered_at"
@@ -443,6 +510,11 @@ class Database:
         
         query = f"SELECT url FROM documents WHERE {stage_conditions.get(stage, '1=0')}"
         result = self.execute(query)
+        return [row[0] for row in result] if result else []
+    
+    def get_urls_by_status(self, status: str) -> List[str]:
+        query = "SELECT url FROM documents WHERE status = %s"
+        result = self.execute(query, (status,))
         return [row[0] for row in result] if result else []
     
     def is_url_processed(self, url: str) -> bool:
@@ -476,39 +548,8 @@ class Database:
         query = f"SELECT {stage_fields[stage]} FROM documents WHERE url = %s"
         result = self.execute_one(query, (url,))
         return result is not None and result[0] is True
-
-        def get_repo_hash(self, repo_url: str) -> Optional[str]:
-        """Получает сохраненный SHA/хэш репозитория"""
-        query = "SELECT file_sha FROM repo_sources WHERE repo_url = %s"
-        result = self.execute_one(query, (repo_url,))
-        return result[0] if result else None
-    
-    def update_repo_hash(self, repo_url: str, file_sha: str) -> None:
-        """Обновляет хэш репозитория"""
-        query = """
-            INSERT INTO repo_sources (repo_url, file_sha, last_scanned_at)
-            VALUES (%s, %s, NOW())
-            ON CONFLICT (repo_url) DO UPDATE SET
-                file_sha = EXCLUDED.file_sha,
-                last_scanned_at = NOW(),
-                updated_at = NOW()
-        """
-        self.execute(query, (repo_url, file_sha))
-    
-    def get_processed_urls(self) -> set:
-        """Получает все URL со статусом 'success'"""
-        query = "SELECT url FROM documents WHERE status = 'success'"
-        result = self.execute(query)
-        return {row[0] for row in result} if result else set()
-    
-    def get_urls_by_status(self, status: str) -> List[str]:
-        """Получает URL по статусу"""
-        query = "SELECT url FROM documents WHERE status = %s"
-        result = self.execute(query, (status,))
-        return [row[0] for row in result] if result else []
     
     def update_status(self, url: str, status: str, error_message: str = None) -> None:
-        """Обновляет статус документа"""
         query = """
             UPDATE documents 
             SET status = %s, 
@@ -521,7 +562,6 @@ class Database:
         self.execute(query, (status, error_message, error_message, status, url))
     
     def mark_as_processed(self, url: str) -> None:
-        """Помечает документ как полностью обработанный"""
         query = """
             UPDATE documents 
             SET status = 'success', 
@@ -530,5 +570,25 @@ class Database:
             WHERE url = %s
         """
         self.execute(query, (url,))
+
+    def get_urls_by_status(self, status: str) -> List[str]:
+        """Получает список URL по статусу"""
+        query = "SELECT url FROM documents WHERE status = %s"
+        result = self.execute(query, (status,))
+        return [row[0] for row in result] if result else []
+    
+    def update_document_status(self, url: str, new_status: str, error_message: str = None) -> None:
+        """Обновляет статус документа"""
+        query = """
+            UPDATE documents 
+            SET status = %s, 
+                updated_at = NOW(),
+                last_error = COALESCE(%s, last_error),
+                last_error_at = CASE WHEN %s IS NOT NULL THEN NOW() ELSE last_error_at END,
+                retry_count = CASE WHEN %s = 'error' THEN retry_count + 1 ELSE retry_count END
+            WHERE url = %s
+        """
+        self.execute(query, (new_status, error_message, error_message, new_status, url))
+
 
 db = Database()
