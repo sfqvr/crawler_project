@@ -12,6 +12,10 @@ from prefect import flow, task
 from prefect.logging import get_run_logger
 from prefect.deployments import run_deployment
 
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from src.db.connection import db
+
 PROJECT_DIR = Path(__file__).resolve().parent.parent
 LOG_DIR = PROJECT_DIR / "logs"
 LOG_DIR.mkdir(exist_ok=True)
@@ -32,7 +36,7 @@ DOCKER_COMPOSE_DIR = Path(__file__).resolve().parent
 
 
 
-DICT = {
+'''DICT = {
     "name": "Allegro", 
     "url": "https://allegro.tech/2018/08/postmortem-why-allegro-went-down.html",
     "description": "E-commerce site went down after a sudden traffic spike caused by a marketing campaign. The outage was caused by a configuration error in cluster resource management which prevented more service instances from starting even though hardware resources were available.",
@@ -57,7 +61,7 @@ DICT = {
     "debug_result_url": "https://allegro.tech/2018/08/postmortem-why-allegro-went-down.html", 
     "debug_status_code": 301, 
     "debug_match_method": "batch_url_match",
-    "debug_batch_id": 1}
+    "debug_batch_id": 1}'''
 
 
 WORK_POOL_NAME = "etl-pool"
@@ -228,6 +232,129 @@ def mark_error(record_id: int):
     # finally:
     #     conn.close()
 
+def get_next_record_from_db(status: str, next_status: str) -> dict | None:
+    """
+    Получает следующий документ из БД с указанным статусом.
+    
+    Args:
+        status: Текущий статус (например, 'new' для Stage 3)
+        next_status: Статус, в который перевести после захвата
+    
+    Returns:
+        Словарь с данными документа или None
+    """
+    try:
+        db.connect()
+        doc = db.get_next_document_by_status(status, next_status)
+        db.close()
+        
+        if doc:
+            # Добавляем id (используем url как id для совместимости)
+            doc['id'] = doc.get('url')
+            return doc
+        return None
+        
+    except Exception as e:
+        print(f"❌ Ошибка при получении записи из БД: {e}")
+        return None
+
+
+def mark_error_in_db(url: str, error_message: str = None):
+    """Помечает документ как ошибочный в БД"""
+    try:
+        db.connect()
+        db.update_document_status(url, 'error', error_message)
+        db.close()
+        print(f"✅ Отмечен как error: {url}")
+    except Exception as e:
+        print(f"❌ Ошибка при отметке error: {e}")
+
+def mark_success_in_db(url: str):
+    """Помечает документ как успешно обработанный в БД"""
+    try:
+        db.connect()
+        db.update_document_status(url, 'success')
+        db.close()
+        print(f"✅ Отмечен как success: {url}")
+    except Exception as e:
+        print(f"❌ Ошибка при отметке success: {e}")
+
+
+# Стадия -> метод Database, который умеет записать RESULT_JSON конкретного шага
+STAGE_DB_WRITERS = {
+    3: "update_stage3_result",
+    4: "update_stage4_result",
+    5: "update_stage5_result",
+    6: "update_stage6_result",
+    7: "update_stage7_result",
+}
+
+
+def update_status(stage: int, result: dict, url: str | None = None) -> dict:
+    """
+    Берёт результирующий словарь (RESULT_JSON), который вернул скрипт стадии
+    `stage`, и сохраняет его в таблицу documents в PostgreSQL.
+
+    url можно не передавать явно — по умолчанию берётся из result["url"].
+    Возвращает тот же result, чтобы функцию было удобно вызывать "по пути"
+    внутри тасков: update_status(3, result).
+    """
+    logger = get_run_logger()
+
+    if not isinstance(result, dict):
+        logger.warning(f"[DB] Стадия {stage}: результат не является словарём, пропускаю запись")
+        return result
+
+    record_url = url or result.get("url")
+    if not record_url:
+        logger.warning(f"[DB] Стадия {stage}: в результате нет url, пропускаю запись")
+        return result
+
+    writer_name = STAGE_DB_WRITERS.get(stage)
+    if writer_name is None:
+        logger.warning(f"[DB] Неизвестная стадия {stage}, пропускаю запись")
+        return result
+
+    try:
+        db.connect()
+        writer = getattr(db, writer_name)
+        writer(record_url, result)
+        logger.info(f"[DB] Стадия {stage} сохранена в БД: {record_url}")
+    except Exception as e:
+        logger.error(f"[DB] Ошибка записи стадии {stage} в БД для {record_url}: {e}")
+        raise
+    finally:
+        db.close()
+
+    return result
+
+
+def mark_stage8_status(result: dict, url: str | None = None) -> dict:
+    """
+    Отдельный хелпер для шага 8 (загрузка в Qdrant), т.к. mark_stage8_completed
+    имеет другую сигнатуру (success/error_message), а не полный словарь.
+    """
+    logger = get_run_logger()
+
+    record_url = url or (result.get("url") if isinstance(result, dict) else None)
+    if not record_url:
+        logger.warning("[DB] Стадия 8: нет url, пропускаю запись статуса")
+        return result
+
+    success = result.get("success", True) if isinstance(result, dict) else True
+    error_message = result.get("error_message") if isinstance(result, dict) else None
+
+    try:
+        db.connect()
+        db.mark_stage8_completed(record_url, success, error_message)
+        logger.info(f"[DB] Стадия 8 сохранена в БД: {record_url} (success={success})")
+    except Exception as e:
+        logger.error(f"[DB] Ошибка записи стадии 8 в БД для {record_url}: {e}")
+        raise
+    finally:
+        db.close()
+
+    return result
 
 @task(name="1_generate_seed_urls", retries=2, retry_delay_seconds=30, tags=["etl", "seed"])
 def task_generate_seed_urls():
@@ -244,6 +371,7 @@ def task_crawl_cleaned_html(record: dict) -> dict:
     result = _run_script("3_crawl_cleaned_html", SCRIPTS["3_crawl_cleaned_html"], arg=record)
     if result is None:
         raise RuntimeError("3_crawl_cleaned_html не вернул RESULT_JSON")
+    update_status(3, result, url=record.get("url"))
     return result
 
 
@@ -252,17 +380,26 @@ def task_llm_filter_relevance(record: dict) -> dict:
     result = _run_script("4_llm_filter_relevance", SCRIPTS["4_llm_filter_relevance"], arg=record)
     if result is None:
         raise RuntimeError("4_llm_filter_relevance не вернул RESULT_JSON")
+    update_status(4, result, url=record.get("url"))
     return result
 
 
 @task(name="5_html_to_markdown", retries=2, retry_delay_seconds=120, tags=["etl", "markdown"])
-def task_html_to_markdown():
-    _run_script("5_html_to_markdown", SCRIPTS["5_html_to_markdown"])
+def task_html_to_markdown(record: dict) -> dict:
+    result = _run_script("5_html_to_markdown", SCRIPTS["5_html_to_markdown"], arg=record)
+    if result is None:
+        raise RuntimeError("5_html_to_markdown не вернул RESULT_JSON")
+    update_status(5, result, url=record.get("url"))
+    return result
 
 
 @task(name="6_extract_metadata", retries=2, retry_delay_seconds=120, tags=["etl", "metadata"])
-def task_extract_metadata():
-    _run_script("6_extract_metadata", SCRIPTS["6_extract_metadata"])
+def task_extract_metadata(record: dict) -> dict:
+    result = _run_script("6_extract_metadata", SCRIPTS["6_extract_metadata"], arg=record)
+    if result is None:
+        raise RuntimeError("6_extract_metadata не вернул RESULT_JSON")
+    update_status(6, result, url=record.get("url"))
+    return result
 
 
 @task(name="7_prepare_qdrant_dataset", retries=1, retry_delay_seconds=10, tags=["etl", "prepare"])
