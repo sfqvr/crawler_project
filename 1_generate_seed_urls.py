@@ -10,7 +10,7 @@ from crawl4ai import LLMExtractionStrategy
 from dotenv import load_dotenv
 from minio_client import MinIOStorage
 
-from src.db.connection import db
+from src.connection import db
 
 load_dotenv()
 
@@ -106,6 +106,7 @@ async def main():
             url = item.get('url')
             if url not in processed_urls:
                 new_urls.append(item)
+                storage.append_json('raw-data',OUTPUT_FILENAMES_PREFIX,item)
             else:
                 print(f"⏭️ URL уже есть в БД: {url}")
 
@@ -127,8 +128,8 @@ async def main():
         print(f"✅ Обновлен хэш репозитория")
 
         # 10. Сохраняем полный список в MinIO (бэкап)
-        storage.upload_jsonl('raw-data', f"{OUTPUT_FILENAMES_PREFIX}.jsonl", data)
-        print(f"💾 Полный список сохранен в MinIO: raw-data/{OUTPUT_FILENAMES_PREFIX}.jsonl")
+        # storage.upload_jsonl('raw-data', f"{OUTPUT_FILENAMES_PREFIX}.jsonl", data)
+        # print(f"💾 Полный список сохранен в MinIO: raw-data/{OUTPUT_FILENAMES_PREFIX}.jsonl")
 
         # 11. Статистика
         llm_strategy.show_usage()
