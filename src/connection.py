@@ -420,45 +420,37 @@ class Database:
 
     def get_next_document_by_status(self, status: str, next_status: str) -> Optional[Dict[str, Any]]:
         """
-        Получает следующий документ с указанным статусом.
-        Использует FOR UPDATE SKIP LOCKED для атомарного захвата.
-        
         Args:
             status: Текущий статус (например, 'new')
             next_status: Статус, в который перевести после захвата (например, 'in_progress')
-        
+
         Returns:
             Словарь с данными документа или None, если документов нет
         """
         query = """
-            SELECT url, name, description, cleaned_html, status
-            FROM documents
-            WHERE status = %s
-            ORDER BY discovered_at
-            LIMIT 1
-            FOR UPDATE SKIP LOCKED
+            UPDATE documents
+            SET status = %s, updated_at = NOW()
+            WHERE url = (
+                SELECT url FROM documents
+                WHERE status = %s
+                ORDER BY discovered_at
+                LIMIT 1
+                FOR UPDATE SKIP LOCKED
+            )
+            RETURNING *
         """
-        
-        # Получаем документ
-        result = self.execute(query, (status,), dict_cursor=True)
-        
+
+        result = self.execute(query, (next_status, status), dict_cursor=True)
+
         if not result:
             return None
-        
+
         doc = dict(result[0])
-        
-        # Обновляем статус на next_status
-        update_query = """
-            UPDATE documents 
-            SET status = %s, updated_at = NOW()
-            WHERE url = %s
-        """
-        self.execute(update_query, (next_status, doc['url']))
-        
+
         # Маппинг полей
         if 'incident_date' in doc:
             doc['date'] = doc['incident_date']
-        
+
         return doc
     
     def get_documents_by_status(self, status: str, limit: Optional[int] = None) -> List[Dict[str, Any]]:
@@ -488,11 +480,6 @@ class Database:
         
         return doc
     
-    def get_documents_by_status(self, status: str) -> List[Dict[str, Any]]:
-        query = "SELECT * FROM documents WHERE status = %s ORDER BY discovered_at"
-        result = self.execute(query, (status,), dict_cursor=True)
-        return [dict(row) for row in result]
-    
     def get_processed_urls(self) -> set:
         query = "SELECT url FROM documents WHERE status = 'success'"
         result = self.execute(query)
@@ -510,11 +497,6 @@ class Database:
         
         query = f"SELECT url FROM documents WHERE {stage_conditions.get(stage, '1=0')}"
         result = self.execute(query)
-        return [row[0] for row in result] if result else []
-    
-    def get_urls_by_status(self, status: str) -> List[str]:
-        query = "SELECT url FROM documents WHERE status = %s"
-        result = self.execute(query, (status,))
         return [row[0] for row in result] if result else []
     
     def is_url_processed(self, url: str) -> bool:
@@ -548,18 +530,6 @@ class Database:
         query = f"SELECT {stage_fields[stage]} FROM documents WHERE url = %s"
         result = self.execute_one(query, (url,))
         return result is not None and result[0] is True
-    
-    def update_status(self, url: str, status: str, error_message: str = None) -> None:
-        query = """
-            UPDATE documents 
-            SET status = %s, 
-                updated_at = NOW(),
-                last_error = COALESCE(%s, last_error),
-                last_error_at = CASE WHEN %s IS NOT NULL THEN NOW() ELSE last_error_at END,
-                retry_count = CASE WHEN %s = 'error' THEN retry_count + 1 ELSE retry_count END
-            WHERE url = %s
-        """
-        self.execute(query, (status, error_message, error_message, status, url))
     
     def mark_as_processed(self, url: str) -> None:
         query = """
