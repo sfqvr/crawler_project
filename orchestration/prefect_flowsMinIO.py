@@ -5,7 +5,7 @@ import subprocess
 import threading
 import time
 import urllib.request
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 
 from prefect import flow, task
@@ -14,7 +14,10 @@ from prefect.deployments import run_deployment
 
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from src.db.connection import db
+
+from src.connection import db
+
+
 
 PROJECT_DIR = Path(__file__).resolve().parent.parent
 LOG_DIR = PROJECT_DIR / "logs"
@@ -25,9 +28,9 @@ SCRIPTS = {
     "2_validate_seed_dataset": PROJECT_DIR / "2_validate_seed_dataset.py",
     "3_crawl_cleaned_html": PROJECT_DIR / "3_crawl_cleaned_html_1row.py",
     "4_llm_filter_relevance": PROJECT_DIR / "4_llm_filter_relevance_1row.py",
-    "5_html_to_markdown": PROJECT_DIR / "5_html_to_markdown.py",
-    "6_extract_metadata": PROJECT_DIR / "6_extract_metadata.py",
-    "7_prepare_qdrant_dataset": PROJECT_DIR / "7_prepare_qdrant_dataset.py",
+    "5_html_to_markdown": PROJECT_DIR / "5_html_to_markdown_1row.py",
+    "6_extract_metadata": PROJECT_DIR / "6_extract_metadata_1row.py",
+    "7_prepare_qdrant_dataset": PROJECT_DIR / "7_prepare_qdrant_dataset_1row.py",
     "8_upload_to_qdrant": PROJECT_DIR / "8_upload_to_qdrant.py"
 }
 
@@ -92,6 +95,12 @@ def _log_pipeline(message: str):
         f.write(f"{datetime.now():%Y-%m-%d %H:%M:%S} | {message}\n")
 
 
+def _json_default(obj):
+    if isinstance(obj, (datetime, date)):
+        return obj.isoformat()
+    raise TypeError(f"Object of type {type(obj).__name__} is not JSON serializable")
+
+
 def _run_script(script_name: str, script_path: Path, arg: dict | None = None) -> dict | None:
     logger = get_run_logger()
     step_logger = _get_step_logger(script_name)
@@ -101,7 +110,7 @@ def _run_script(script_name: str, script_path: Path, arg: dict | None = None) ->
     step_logger.info("ЗАПУСК")
     logger.info(f"Запуск: {script_name}")
 
-    json_str = json.dumps(arg, ensure_ascii=False) if arg else ""
+    json_str = json.dumps(arg, ensure_ascii=False, default=_json_default) if arg else ""
 
     process = subprocess.Popen(
         [str(PYTHON), str(script_path), json_str],
@@ -371,7 +380,7 @@ def task_crawl_cleaned_html(record: dict) -> dict:
     result = _run_script("3_crawl_cleaned_html", SCRIPTS["3_crawl_cleaned_html"], arg=record)
     if result is None:
         raise RuntimeError("3_crawl_cleaned_html не вернул RESULT_JSON")
-    update_status(3, result, url=record.get("url"))
+    # update_status(3, result, url=record.get("url"))
     return result
 
 
@@ -389,7 +398,7 @@ def task_html_to_markdown(record: dict) -> dict:
     result = _run_script("5_html_to_markdown", SCRIPTS["5_html_to_markdown"], arg=record)
     if result is None:
         raise RuntimeError("5_html_to_markdown не вернул RESULT_JSON")
-    update_status(5, result, url=record.get("url"))
+    # update_status(5, result, url=record.get("url"))
     return result
 
 
@@ -398,13 +407,17 @@ def task_extract_metadata(record: dict) -> dict:
     result = _run_script("6_extract_metadata", SCRIPTS["6_extract_metadata"], arg=record)
     if result is None:
         raise RuntimeError("6_extract_metadata не вернул RESULT_JSON")
-    update_status(6, result, url=record.get("url"))
+    # update_status(6, result, url=record.get("url"))
     return result
 
 
 @task(name="7_prepare_qdrant_dataset", retries=1, retry_delay_seconds=10, tags=["etl", "prepare"])
-def task_prepare_qdrant_dataset():
-    _run_script("7_prepare_qdrant_dataset", SCRIPTS["7_prepare_qdrant_dataset"])
+def task_prepare_qdrant_dataset(record: dict) -> dict:
+    result =_run_script("7_prepare_qdrant_dataset", SCRIPTS["7_prepare_qdrant_dataset"], arg=record)
+    if result is None:
+        raise RuntimeError("7_prepare_qdrant_dataset не вернул RESULT_JSON")
+    update_status(6, result, url=record.get("url"))
+    return result
 
 
 @task(name="8_upload_to_qdrant", retries=1, retry_delay_seconds=10, tags=["etl", "qdrant"])
@@ -433,7 +446,7 @@ def etl_pipeline():
 @flow(name="etl-pipeline-auto", log_prints=True)
 def etl_pipeline_auto():
     logger = get_run_logger()
-    record = get_next_record()
+    record = get_next_record_from_db("new",'in_progress')
 
     if record is None:
         logger.info("Нет новых записей — пауза")
@@ -443,8 +456,11 @@ def etl_pipeline_auto():
 
     logger.info(f"Запуск пайплайна для: {record['url']}")
 
-    crawl_result = task_crawl_cleaned_html(record)          # step 3's output...
-    filter_result = task_llm_filter_relevance(crawl_result)  # ...becomes step 4's input
+    result_3 = task_crawl_cleaned_html(record)          # step 3's output...
+    result_4 = task_llm_filter_relevance(result_3)  # ...becomes step 4's input
+    result_5 = task_html_to_markdown(result_4)
+    result_6 = task_extract_metadata(result_5)
+    result_7 = task_prepare_qdrant_dataset(result_6)
 
     logger.info("Пайплайн завершён")
     run_deployment(name=FULL_DEPLOYMENT_NAME, timeout=0, as_subflow=False)
@@ -466,7 +482,7 @@ def stage1_seed():
 @flow(name="stage34-crawl-filter", log_prints=True)
 def stage34_crawl_filter():
     logger = get_run_logger()
-    record = get_next_record("seeded")
+    record = get_next_record_from_db("new",'skipped')
 
     if record is None:
         logger.info("Нет новых записей — пауза")
@@ -478,7 +494,7 @@ def stage34_crawl_filter():
         logger.info(f"Запуск пайплайна для: {record['url']}")
         crawl_result = task_crawl_cleaned_html(record)
         task_llm_filter_relevance(crawl_result)
-        logger.info("Пайплайн завершён успешно")
+        logger.info("Пайплайн 34 завершён успешно")
         _log_pipeline(f"ЗАВЕРШЁН: {record['url']}")
 
     except Exception as e:
@@ -489,6 +505,35 @@ def stage34_crawl_filter():
 
     finally:
         run_deployment(name="stage34-crawl-filter/stage34-loop", timeout=0, as_subflow=False)
+
+
+@flow(name="stage567-markdown", log_prints=True)
+def stage567_markdown_qdrant():
+    logger = get_run_logger()
+    record = get_next_record_from_db('in_progress','skipped')
+
+    if record is None:
+        logger.info("Нет новых записей — пауза")
+        time.sleep(30)
+        run_deployment(name="stage34-crawl-filter/stage34-loop", timeout=0, as_subflow=False)
+        return
+
+    try:
+        logger.info(f"Запуск пайплайна для: {record['url']}")
+        result_5 = task_html_to_markdown(record)
+        result_6 = task_extract_metadata(result_5)
+        result_7 = task_prepare_qdrant_dataset(result_6)
+        logger.info("Пайплайн 567 завершён успешно")
+        _log_pipeline(f"ЗАВЕРШЁН: {record['url']}")
+
+    except Exception as e:
+        logger.error(f"Ошибка обработки записи {record['id']} ({record['url']}): {e}")
+        _log_pipeline(f"ОШИБКА: {record['url']} — {e}")
+        mark_error(record["id"])
+        raise  # flow run is marked Failed in the Prefect UI
+
+    finally:
+        run_deployment(name="stage567-markdown/stage567-loop", timeout=0, as_subflow=False)
 
 
 def _wait_for_minio():
@@ -518,6 +563,11 @@ def _wait_for_minio():
 if __name__ == "__main__":
     _wait_for_minio()
 
+    etl_pipeline_auto.from_source(
+        source=str(Path(__file__).resolve().parent),
+        entrypoint=f"{Path(__file__).name}:etl_pipeline_auto",
+    ).deploy(name="etl-loop", work_pool_name="etl-pool")
+
     stage1_seed.from_source(
         source=str(Path(__file__).resolve().parent),
         entrypoint=f"{Path(__file__).name}:stage1_seed",
@@ -527,3 +577,8 @@ if __name__ == "__main__":
         source=str(Path(__file__).resolve().parent),
         entrypoint=f"{Path(__file__).name}:stage34_crawl_filter",
     ).deploy(name="stage34-loop", work_pool_name="stage34-pool")
+
+    stage567_markdown_qdrant.from_source(
+        source=str(Path(__file__).resolve().parent),
+        entrypoint=f"{Path(__file__).name}:stage567_markdown_qdrant",
+    ).deploy(name="stage567-loop", work_pool_name="stage567-pool")

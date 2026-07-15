@@ -2,6 +2,7 @@ import asyncio
 import json
 import sys
 from datetime import datetime, timezone
+import time
 from typing import Literal, Optional
 
 from pydantic import BaseModel, Field
@@ -11,7 +12,7 @@ from langchain.tools import tool
 from langchain_core.prompts import ChatPromptTemplate
 from dotenv import load_dotenv
 import os
-from minio_client import MinIOStorage
+from minio_client import MinIOStorage, INPUT_FILENAMES_PREFIX
 
 load_dotenv()
 
@@ -19,7 +20,7 @@ load_dotenv()
 # CONFIG
 # =============================================================================
 INPUT_FOLDER_NAME = "parsed_jimmyl02"
-INPUT_FILENAMES_PREFIX = "jimmyl02_postmortems"
+# INPUT_FILENAMES_PREFIX = "jimmyl02_postmortems"
 
 storage = MinIOStorage()
 
@@ -412,9 +413,11 @@ async def main():
     debug_print(f"[URL] {url}")
 
     output_row = dict(row_dict)
+    output_row["cleaned_html"] = storage.get_html('raw-data',INPUT_FILENAMES_PREFIX,url)
+    output_row["markdown_content"] = storage.get_markdown('raw-data',INPUT_FILENAMES_PREFIX,url)
 
     # Если stage3 провалился — stage4 = null
-    if build_stage4_null_reason(row_dict):
+    if build_stage4_null_reason(output_row):
         output_row["stage4"] = None
         storage.append_json('silver-data', INPUT_FILENAMES_PREFIX, output_row)
 
@@ -426,10 +429,9 @@ async def main():
     model = build_model()
     agent = build_agent(model)
 
-    stage4_result = run_stage4_for_row(agent, row_dict)
+    stage4_result = run_stage4_for_row(agent, output_row)
     output_row["stage4"] = stage4_result.model_dump()
-
-    storage.append_json('silver-data', INPUT_FILENAMES_PREFIX, output_row)
+    
 
     if stage4_result.success and stage4_result.assessment is not None:
         assessment = stage4_result.assessment
@@ -447,6 +449,24 @@ async def main():
     debug_print("=== ГОТОВО ===")
     debug_print(f"Успех: {stage4_result.success}")
 
+    storage.append_json('silver-data', INPUT_FILENAMES_PREFIX, output_row)
+    storage.append_html(
+        "raw-data",
+        INPUT_FILENAMES_PREFIX,
+        output_row["url"],
+        output_row["cleaned_html"],
+    )
+    storage.append_markdown(
+        "raw-data",
+        INPUT_FILENAMES_PREFIX,
+        output_row["url"],
+        output_row["markdown_content"],
+    )
+
+# удаляем большие объекты из выходной строки так как иначе консольный аргумент слишком длинный
+    output_row["cleaned_html"] = ""
+    output_row["markdown_content"] = ""
+    debug_print(output_row)
     print("RESULT_JSON:" + json.dumps(output_row, ensure_ascii=False))
 
 

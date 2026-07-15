@@ -13,7 +13,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from dotenv import load_dotenv
 import os
 
-from minio_client import MinIOStorage
+from minio_client import MinIOStorage, INPUT_FILENAMES_PREFIX
 
 load_dotenv()
 
@@ -21,7 +21,7 @@ load_dotenv()
 # CONFIG
 # =============================================================================
 INPUT_FOLDER_NAME = "parsed_jimmyl02"
-INPUT_FILENAMES_PREFIX = "jimmyl02_postmortems"
+# INPUT_FILENAMES_PREFIX = "jimmyl02_postmortems"
 
 storage = MinIOStorage()
 
@@ -386,26 +386,29 @@ async def main():
     debug_print(f"[URL] {url}")
 
     output_row = dict(row_dict)
+    output_row["cleaned_html"] = storage.get_html('raw-data',INPUT_FILENAMES_PREFIX,url)
+    output_row["markdown_content"] = storage.get_markdown('raw-data',INPUT_FILENAMES_PREFIX,url)
 
-    if not is_stage5_candidate(row_dict):
-        output_row["stage5"] = None
-        storage.append_json('silver-data', INPUT_FILENAMES_PREFIX, output_row)
 
-        debug_print("[SKIP][STAGE5] stage5=null, запись не проходит фильтры stage5")
-        debug_print("\n" + "=" * 80)
-        debug_print("=== ГОТОВО ===")
-        return
 
-    assessment = get_stage4_assessment(row_dict) or {}
+    # if not is_stage5_candidate(output_row):
+    #     output_row["stage5"] = None
+    #     storage.append_json('silver-data', INPUT_FILENAMES_PREFIX, output_row)
+
+    #     debug_print("[SKIP][STAGE5] stage5=null, запись не проходит фильтры stage5")
+    #     debug_print("\n" + "=" * 80)
+    #     debug_print("=== ГОТОВО ===")
+    #     return
+
+    assessment = get_stage4_assessment(output_row) or {}
     debug_print(f"[CANDIDATE][STAGE5] document_kind={assessment.get('document_kind', 'unknown')}")
 
     model = build_model()
     agent = build_agent(model)
 
-    stage5_result = run_stage5_for_row(agent, row_dict)
+    stage5_result = run_stage5_for_row(agent, output_row)
     output_row["stage5"] = stage5_result.model_dump()
 
-    storage.append_json('silver-data', INPUT_FILENAMES_PREFIX, output_row)
 
     if stage5_result.success:
         debug_print(
@@ -419,6 +422,25 @@ async def main():
     debug_print("\n" + "=" * 80)
     debug_print("=== ГОТОВО ===")
     debug_print(f"Успех: {stage5_result.success}")
+
+    storage.append_json('silver-data', INPUT_FILENAMES_PREFIX, output_row)
+    storage.append_html(
+        "raw-data",
+        INPUT_FILENAMES_PREFIX,
+        output_row["url"],
+        output_row["cleaned_html"],
+    )
+    storage.append_markdown(
+        "raw-data",
+        INPUT_FILENAMES_PREFIX,
+        output_row["url"],
+        output_row["markdown_content"],
+    )
+    
+# удаляем большие объекты из выходной строки так как иначе консольный аргумент слишком длинный
+    output_row["cleaned_html"] = ""
+    output_row["markdown_content"] = ""
+    print("RESULT_JSON:" + json.dumps(output_row, ensure_ascii=False))
 
 
 if __name__ == "__main__":

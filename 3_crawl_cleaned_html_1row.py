@@ -7,11 +7,11 @@ from typing import Optional
 
 from crawl4ai import AsyncWebCrawler, CacheMode
 from crawl4ai.async_configs import BrowserConfig, CrawlerRunConfig
-from minio_client import MinIOStorage
+from minio_client import MinIOStorage, INPUT_FILENAMES_PREFIX
 
 
 INPUT_FOLDER_NAME = "parsed_jimmyl02"
-INPUT_FILENAMES_PREFIX = "test"  # "jimmyl02_postmortems"
+# INPUT_FILENAMES_PREFIX = "test"  # "jimmyl02_postmortems"
 
 storage = MinIOStorage()
 
@@ -295,6 +295,7 @@ async def main():
         print("Error: input JSON must contain a 'url' field")
         sys.exit(1)
 
+    
     print_output_schema()
     debug_print(f"[INFO] Обрабатываем одну запись: {row.get('url')}")
 
@@ -309,13 +310,7 @@ async def main():
             started_iso=started_iso,
             started_perf=started_perf,
         )
-
-    storage.append_html(
-        "raw-data",
-        INPUT_FILENAMES_PREFIX,
-        output_row["url"],
-        output_row["cleaned_html"],
-    )
+    
 
     debug_print("\n" + "=" * 80)
     debug_print("=== ГОТОВО ===")
@@ -325,6 +320,22 @@ async def main():
         debug_print(f"Ошибка: {output_row['crawl_error_message']}")
     debug_print(f"Общее время: {round(time.perf_counter() - started_perf, 3)} сек")
 
+    storage.append_html(
+        "raw-data",
+        INPUT_FILENAMES_PREFIX,
+        output_row["url"],
+        output_row["cleaned_html"],
+    )
+    storage.append_markdown(
+        "raw-data",
+        INPUT_FILENAMES_PREFIX,
+        output_row["url"],
+        "",
+    )
+    
+# удаляем большие объекты из выходной строки так как иначе консольный аргумент слишком длинный
+    output_row["cleaned_html"] = ""
+    output_row["markdown_content"] = ""
     print("RESULT_JSON:" + json.dumps(output_row, ensure_ascii=False))
 
 
