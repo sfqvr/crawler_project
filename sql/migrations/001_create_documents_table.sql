@@ -106,6 +106,18 @@ CREATE TABLE IF NOT EXISTS documents (
     CONSTRAINT valid_status CHECK (status IN ('new', 'in_progress', 'error', 'success', 'skipped'))
 );
 
+-- 1. Удаляем ВСЕ данные из таблицы
+--TRUNCATE TABLE documents CASCADE;
+
+-- 2. старое ограничение
+ALTER TABLE documents DROP CONSTRAINT IF EXISTS valid_status;
+
+-- 3. Добавляем новое ограничение с новыми статусами
+ALTER TABLE documents ADD CONSTRAINT valid_status CHECK (
+    status IN ('new', 'with_html', 'ready_qdrant', 'success', 'error', 'skipped')
+);
+
+CREATE INDEX idx_documents_status ON documents(status);
 CREATE INDEX IF NOT EXISTS idx_documents_status ON documents(status);
 CREATE INDEX IF NOT EXISTS idx_documents_url ON documents(url);
 CREATE INDEX IF NOT EXISTS idx_documents_document_kind ON documents(document_kind);
