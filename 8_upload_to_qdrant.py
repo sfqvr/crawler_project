@@ -9,7 +9,8 @@ from dotenv import load_dotenv
 from openai import OpenAI
 from qdrant_client import QdrantClient, models
 
-from minio_client import MinIOStorage
+from src.connection import db
+from minio_client import MinIOStorage, INPUT_FILENAMES_PREFIX
 
 
 # =============================================================================
@@ -17,18 +18,7 @@ from minio_client import MinIOStorage
 # =============================================================================
 load_dotenv()
 
-INPUT_FOLDER_NAME = "parsed_jimmyl02"
-INPUT_FILENAMES_PREFIX = "jimmyl02_postmortems"
-
 storage = MinIOStorage()
-storage.client.fget_object(
-    bucket_name='silver-data',
-    object_name=f"{INPUT_FILENAMES_PREFIX}_stage7.jsonl",
-    file_path=f"{INPUT_FOLDER_NAME}/{INPUT_FILENAMES_PREFIX}_stage7.jsonl",
-)
-
-INPUT_FILE = Path(f"{INPUT_FOLDER_NAME}/{INPUT_FILENAMES_PREFIX}_stage7.jsonl")
-
 # INPUT_FILE = Path("parsed_danluu/danluu_postmortems_qdrant_ready.jsonl")
 
 # OpenAI-compatible embeddings endpoint
@@ -330,87 +320,105 @@ def print_payload_schema() -> None:
 
 
 def main():
-    if not INPUT_FILE.exists():
-        raise FileNotFoundError(f"Input file not found: {INPUT_FILE}")
 
     print_payload_schema()
+    try:
+        db.connect()
+        rows = db.get_ready_for_qdrant()
+        
+    
+        if not rows:
+            print("[INFO] No rows found.")
+            return
+        # else:
+        #     for row in rows:
+        #         # Добавляем id (используем url как id для совместимости)
+        #         row['id'] = row.get('url')
 
-    rows = load_jsonl(INPUT_FILE)
-    if not rows:
-        print("[INFO] No rows found in input file.")
-        return
+        debug_print(f"[INFO] Input rows: {len(rows)}")
 
-    debug_print(f"[INFO] Input rows: {len(rows)}")
+        prepared = []
+        for row in rows:
+            url = row.get("url","")
+            row["cleaned_html"] = storage.get_html('raw-data',INPUT_FILENAMES_PREFIX,url)
+            row["markdown_content"] = storage.get_markdown('raw-data',INPUT_FILENAMES_PREFIX,url)
 
-    prepared = []
-    for row in rows:
-        embedding_text = build_embedding_text_from_row(row)
-        if not embedding_text.strip():
-            debug_print(f"[SKIP] Empty embedding text for URL: {row.get('url')}")
-            continue
+            embedding_text = build_embedding_text_from_row(row)
+            if not embedding_text.strip():
+                debug_print(f"[SKIP] Empty embedding text for URL: {row.get('url')}")
+                continue
 
-        prepared.append(
-            {
-                "id": make_point_id(row),
-                "vector_text": embedding_text,
-                "payload": build_payload(row),
-            }
-        )
+            prepared.append(
+                {
+                    "id": make_point_id(row),
+                    "vector_text": embedding_text,
+                    "payload": build_payload(row),
+                }
+            )
 
-    if not prepared:
-        print("[INFO] No valid rows to upload.")
-        return
+        if not prepared:
+            print("[INFO] No valid rows to upload.")
+            return
 
-    debug_print(f"[INFO] Rows ready for embedding/upload: {len(prepared)}")
+        debug_print(f"[INFO] Rows ready for embedding/upload: {len(prepared)}")
 
-    openai_client = build_openai_client()
-    qdrant_client = build_qdrant_client()
+        openai_client = build_openai_client()
+        qdrant_client = build_qdrant_client()
 
-    # Detect vector dimension from the first embedding
-    first_embedding = embed_texts(openai_client, [prepared[0]["vector_text"]])[0]
-    vector_size = len(first_embedding)
-    debug_print(f"[INFO] Detected embedding dimension: {vector_size}")
+        # Detect vector dimension from the first embedding
+        first_embedding = embed_texts(openai_client, [prepared[0]["vector_text"]])[0]
+        vector_size = len(first_embedding)
+        debug_print(f"[INFO] Detected embedding dimension: {vector_size}")
 
-    ensure_collection(qdrant_client, QDRANT_COLLECTION, vector_size)
-    create_payload_indexes(qdrant_client, QDRANT_COLLECTION)
+        ensure_collection(qdrant_client, QDRANT_COLLECTION, vector_size)
+        create_payload_indexes(qdrant_client, QDRANT_COLLECTION)
 
-    uploaded_points = 0
+        uploaded_points = 0
 
-    for batch in chunked(prepared, EMBEDDING_BATCH_SIZE):
-        texts = [item["vector_text"] for item in batch]
-        vectors = embed_texts(openai_client, texts)
+        for batch in chunked(prepared, EMBEDDING_BATCH_SIZE):
+            texts = [item["vector_text"] for item in batch]
+            vectors = embed_texts(openai_client, texts)
 
-        points = []
-        for item, vector in zip(batch, vectors):
-            points.append(
-                models.PointStruct(
-                    id=item["id"],
-                    vector=vector,
-                    payload=item["payload"],
+            points = []
+            for item, vector in zip(batch, vectors):
+                points.append(
+                    models.PointStruct(
+                        id=item["id"],
+                        vector=vector,
+                        payload=item["payload"],
+                    )
                 )
-            )
 
-        # Upsert batch
-        for points_batch in chunked(points, UPSERT_BATCH_SIZE):
-            qdrant_client.upsert(
-                collection_name=QDRANT_COLLECTION,
-                points=points_batch,
-                wait=True,
-            )
-            uploaded_points += len(points_batch)
-            debug_print(f"[UPSERT] Uploaded {uploaded_points}/{len(prepared)} points")
+            # Upsert batch
+            for points_batch in chunked(points, UPSERT_BATCH_SIZE):
+                qdrant_client.upsert(
+                    collection_name=QDRANT_COLLECTION,
+                    points=points_batch,
+                    wait=True,
+                )
+                uploaded_points += len(points_batch)
+                debug_print(f"[UPSERT] Uploaded {uploaded_points}/{len(prepared)} points")
 
-    print("=" * 80)
-    print("=== QDRANT UPLOAD COMPLETE ===")
-    print(f"Input rows: {len(rows)}")
-    print(f"Uploaded points: {uploaded_points}")
-    print(f"Collection: {QDRANT_COLLECTION}")
-    print(f"Embedding model: {EMBEDDING_MODEL}")
-    if QDRANT_LOCAL_MODE:
-        print(f"Qdrant mode: local ({QDRANT_LOCAL_PATH or ':memory:'})")
-    else:
-        print(f"Qdrant mode: server ({QDRANT_URL})")
-    print("=" * 80)
+        print("=" * 80)
+        print("=== QDRANT UPLOAD COMPLETE ===")
+        print(f"Input rows: {len(rows)}")
+        print(f"Uploaded points: {uploaded_points}")
+        print(f"Collection: {QDRANT_COLLECTION}")
+        print(f"Embedding model: {EMBEDDING_MODEL}")
+        if QDRANT_LOCAL_MODE:
+            print(f"Qdrant mode: local ({QDRANT_LOCAL_PATH or ':memory:'})")
+        else:
+            print(f"Qdrant mode: server ({QDRANT_URL})")
+        print("=" * 80)
+
+        urls = [i["payload"]["url"] for i in prepared]
+
+        db.connect()
+        db.mark_qdrant_uploaded(urls)
+        db.close()
+    
+    except Exception as e:
+        print(f"❌ Ошибка при записи в БД: {e}")
 
 
 if __name__ == "__main__":

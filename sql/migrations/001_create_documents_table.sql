@@ -114,7 +114,7 @@ ALTER TABLE documents DROP CONSTRAINT IF EXISTS valid_status;
 
 -- 3. Добавляем новое ограничение с новыми статусами
 ALTER TABLE documents ADD CONSTRAINT valid_status CHECK (
-    status IN ('new', 'with_html', 'ready_qdrant', 'success', 'error', 'skipped')
+    status IN ('new', 'with_html', 'ready_qdrant', 'success', 'error', 'skipped', 'in_progress')
 );
 
 CREATE INDEX idx_documents_status ON documents(status);

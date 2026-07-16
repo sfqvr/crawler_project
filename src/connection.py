@@ -560,127 +560,140 @@ class Database:
         """
         self.execute(query, (new_status, error_message, error_message, new_status, url))
 
-def update_status(self, url: str, new_status: str, error_message: str = None) -> None:
-    """Универсальный метод обновления статуса"""
-    query = """
-        UPDATE documents 
-        SET status = %s, 
-            updated_at = NOW(),
-            last_error = COALESCE(%s, last_error),
-            last_error_at = CASE WHEN %s IS NOT NULL THEN NOW() ELSE last_error_at END,
-            retry_count = CASE WHEN %s = 'error' THEN retry_count + 1 ELSE retry_count END
-        WHERE url = %s
-    """
-    self.execute(query, (new_status, error_message, error_message, new_status, url))
-
-def get_next_by_status(self, status: str, limit: int = 1) -> List[Dict[str, Any]]:
-    """
-    Получает документы с определенным статусом для обработки.
-    Используется в потоках 2, 3, 4.
-    """
-    query = """
-        SELECT 
-            url, name, description, 
-            cleaned_html, crawl_success,
-            is_relevant, document_kind,
-            markdown_content, markdown_length,
-            company, incident_date as date, short_description,
-            incident_categories, tech_stack, infrastructure, key_terms,
-            symptoms, root_cause, resolution, lessons_learned,
-            metadata_confidence
-        FROM documents
-        WHERE status = %s
-        ORDER BY discovered_at
-        LIMIT %s
-        FOR UPDATE SKIP LOCKED
-    """
-    result = self.execute(query, (status, limit), dict_cursor=True)
-    return [dict(row) for row in result] if result else []
-
-def mark_stage3_4_completed(self, url: str, result: dict) -> None:
-    """
-    Обновляет статус после Stage 3 (краулинг) + Stage 4 (фильтр релевантности)
-    """
-    # Достаем данные из результата
-    crawl_success = result.get('crawl_success', False)
-    stage4 = result.get('stage4', {})
-    assessment = stage4.get('assessment', {})
-    stage4_success = stage4.get('success', False)
-    is_relevant = assessment.get('is_relevant', False)
-    
-    # Определяем новый статус
-    if crawl_success and stage4_success:
-        if is_relevant:
-            new_status = 'with_html'  # Переходим к Stage 5-7
-        else:
-            new_status = 'skipped'    # Не релевантно - пропускаем
-    else:
-        new_status = 'error'
-        error_msg = result.get('crawl_error_message', '') or stage4.get('error_message', '')
-    
-    # Обновляем все поля
-    self.update_stage3_result(url, result)
-    self.update_stage4_result(url, result)
-    self.update_status(url, new_status, error_msg if new_status == 'error' else None)
-
-def mark_stage5_7_completed(self, url: str, result: dict) -> None:
-    """
-    Обновляет статус после Stage 5 (markdown) + Stage 6 (метаданные)
-    """
-    stage5 = result.get('stage5', {})
-    stage6 = result.get('stage6', {})
-    
-    stage5_success = stage5.get('success', False)
-    stage6_success = stage6.get('success', False)
-    
-    if stage5_success and stage6_success:
-        new_status = 'ready_qdrant'  # Готов к загрузке в Qdrant
-        error_msg = None
-    else:
-        new_status = 'error'
-        error_msg = stage5.get('error_message', '') or stage6.get('error_message', '')
-    
-    # Обновляем поля
-    self.update_stage5_result(url, result)
-    self.update_stage6_result(url, result)
-    self.update_status(url, new_status, error_msg if new_status == 'error' else None)
-
-def get_ready_for_qdrant(self, limit: int = 100) -> List[Dict[str, Any]]:
-    """
-    Получает документы для загрузки в Qdrant (статус 'ready_qdrant')
-    """
-    query = """
-        SELECT 
-            url, name, description,
-            company, incident_date as date,
-            short_description,
-            incident_categories, tech_stack, infrastructure, key_terms,
-            symptoms, root_cause, resolution, lessons_learned,
-            markdown_content,
-            metadata_confidence as stage6_confidence
-        FROM documents
-        WHERE status = 'ready_qdrant'
-          AND qdrant_point_id IS NULL
-        ORDER BY discovered_at
-        LIMIT %s
-        FOR UPDATE SKIP LOCKED
-    """
-    result = self.execute(query, (limit,), dict_cursor=True)
-    return [dict(row) for row in result] if result else []
-
-def mark_qdrant_uploaded(self, urls: List[str]) -> None:
-    """Отмечает документы как загруженные в Qdrant"""
-    import uuid
-    for url in urls:
-        point_id = str(uuid.uuid5(uuid.NAMESPACE_URL, url))
+    def update_status(self, url: str, new_status: str, error_message: str = None) -> None:
+        """Универсальный метод обновления статуса"""
         query = """
             UPDATE documents 
-            SET qdrant_point_id = %s,
-                status = 'success',
-                processed_at = NOW(),
-                updated_at = NOW()
+            SET status = %s, 
+                updated_at = NOW(),
+                last_error = COALESCE(%s, last_error),
+                last_error_at = CASE WHEN %s IS NOT NULL THEN NOW() ELSE last_error_at END,
+                retry_count = CASE WHEN %s = 'error' THEN retry_count + 1 ELSE retry_count END
             WHERE url = %s
         """
-        self.execute(query, (point_id, url))
+        self.execute(query, (new_status, error_message, error_message, new_status, url))
+
+    def get_next_by_status(self, status: str, limit: int = 1) -> List[Dict[str, Any]]:
+        """
+        Получает документы с определенным статусом для обработки.
+        Используется в потоках 2, 3, 4.
+        """
+        query = """
+            SELECT 
+                url, name, description, 
+                cleaned_html, crawl_success,
+                is_relevant, document_kind,
+                markdown_content, markdown_length,
+                company, incident_date as date, short_description,
+                incident_categories, tech_stack, infrastructure, key_terms,
+                symptoms, root_cause, resolution, lessons_learned,
+                metadata_confidence
+            FROM documents
+            WHERE status = %s
+            ORDER BY discovered_at
+            LIMIT %s
+            FOR UPDATE SKIP LOCKED
+        """
+        result = self.execute(query, (status, limit), dict_cursor=True)
+        return [dict(row) for row in result] if result else []
+
+    def mark_stage3_4_completed(self, url: str, result: dict) -> None:
+        """
+        Обновляет статус после Stage 3 (краулинг) + Stage 4 (фильтр релевантности)
+        """
+        # Достаем данные из результата
+        crawl_success = result.get('crawl_success', False)
+        stage4 = result.get('stage4', {})
+        assessment = stage4.get('assessment', {})
+        stage4_success = stage4.get('success', False)
+        is_relevant = assessment.get('is_relevant', False)
+        
+        # Определяем новый статус
+        if crawl_success and stage4_success:
+            if is_relevant:
+                new_status = 'with_html'  # Переходим к Stage 5-7
+            else:
+                new_status = 'skipped'    # Не релевантно - пропускаем
+        else:
+            new_status = 'error'
+            error_msg = result.get('crawl_error_message', '') or stage4.get('error_message', '')
+        
+        # Обновляем все поля
+        self.update_stage3_result(url, result)
+        self.update_stage4_result(url, result)
+        self.update_status(url, new_status, error_msg if new_status == 'error' else None)
+
+    def mark_stage5_7_completed(self, url: str, result: dict) -> None:
+        """
+        Обновляет статус после Stage 5 (markdown) + Stage 6 (метаданные)
+        """
+        stage5 = result.get('stage5', {})
+        stage6 = result.get('stage6', {})
+        
+        stage5_success = stage5.get('success', False)
+        stage6_success = stage6.get('success', False)
+
+        if stage5_success and stage6_success:
+            new_status = 'ready_qdrant'  # Готов к загрузке в Qdrant
+            error_msg = None
+        else:
+            new_status = 'error'
+            error_msg = stage5.get('error_message', '') or stage6.get('error_message', '')
+        
+        # Обновляем поля
+        self.update_stage5_result(url, result)
+        self.update_stage6_result(url, result)
+        self.update_stage7_result(url, result)
+        self.update_status(url, new_status, error_msg if new_status == 'error' else None)
+
+    def get_ready_for_qdrant(self, limit: int = 100) -> List[Dict[str, Any]]:
+        """
+        Получает документы для загрузки в Qdrant (статус 'ready_qdrant')
+        """
+        query = """
+            SELECT 
+                url, name, description,
+                company, incident_date as date,
+                short_description,
+                incident_categories, tech_stack, infrastructure, key_terms,
+                symptoms, root_cause, resolution, lessons_learned,
+                markdown_content,
+                metadata_confidence as stage6_confidence
+            FROM documents
+            WHERE status = 'ready_qdrant'
+            ORDER BY discovered_at
+            LIMIT %s
+            FOR UPDATE SKIP LOCKED
+        """
+        result = self.execute(query, (limit,), dict_cursor=True)
+        return [dict(row) for row in result] if result else []
+
+    def mark_qdrant_uploaded(self, urls: List[str]) -> None:
+        """Отмечает документы как загруженные в Qdrant"""
+        import uuid
+        for url in urls:
+            point_id = str(uuid.uuid5(uuid.NAMESPACE_URL, url))
+            query = """
+                UPDATE documents 
+                SET qdrant_point_id = %s,
+                    status = 'success',
+                    processed_at = NOW(),
+                    updated_at = NOW()
+                WHERE url = %s
+            """
+            self.execute(query, (point_id, url))
 
 db = Database()
+
+
+def main():
+    # db.execute("""DROP TABLE documents""")
+    # db.execute("""TRUNCATE TABLE documents""")
+    # db.execute("""TRUNCATE TABLE repo_sources""")
+    # print(db.get_ready_for_qdrant())
+    # print(db.get_document_by_url("https://status.openai.com/incidents/4cckbrhr8hr0"))
+    print(db.get_next_by_status('ready_qdrant',100))
+    print(db.get_ready_for_qdrant())
+
+if __name__ == "__main__":
+    main()

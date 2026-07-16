@@ -106,21 +106,21 @@ def get_stage5_markdown(row: dict) -> str:
 
 
 def is_stage6_candidate(row: dict) -> bool:
-    stage4 = get_stage4(row)
-    assessment = get_stage4_assessment(row)
+    # stage4 = get_stage4(row)
+    # assessment = get_stage4_assessment(row)
     stage5 = get_stage5(row)
     markdown_content = get_stage5_markdown(row)
 
-    if not stage4 or not assessment or not stage5:
+    if not stage5:
         return False
 
-    if stage4.get("success") is not True:
+    if row.get("stage4_success") is not True:
         return False
 
-    if assessment.get("is_relevant") is not True:
+    if row.get("is_relevant") is not True:
         return False
 
-    if assessment.get("document_kind") not in ALLOWED_DOCUMENT_KINDS:
+    if row.get("document_kind") not in ALLOWED_DOCUMENT_KINDS:
         return False
 
     if stage5.get("success") is not True:
@@ -470,7 +470,7 @@ def run_stage6_for_row(agent, row: dict) -> Stage6Result:
     submission_buffer["extraction"] = None
 
     markdown_content = get_stage5_markdown(row)
-    stage4_assessment = get_stage4_assessment(row) or {}
+    # stage4_assessment = get_stage4_assessment(row) or {}
 
     markdown_for_llm, was_truncated, original_len, llm_len = prepare_markdown_for_llm(markdown_content)
 
@@ -479,7 +479,7 @@ def run_stage6_for_row(agent, row: dict) -> Stage6Result:
             "name": row.get("name", ""),
             "url": row.get("url", ""),
             "description": row.get("description", ""),
-            "document_kind": stage4_assessment.get("document_kind", "unknown"),
+            "document_kind": row.get("document_kind", "unknown"),
             "markdown_length": original_len,
             "markdown_content": markdown_for_llm,
         }
@@ -558,20 +558,20 @@ async def main():
 
     output_row = dict(row_dict)
     output_row["cleaned_html"] = storage.get_html('raw-data',INPUT_FILENAMES_PREFIX,url)
-    output_row["markdown_content"] = storage.get_markdown('raw-data',INPUT_FILENAMES_PREFIX,url)
+    output_row["stage5"]["markdown_content"] = storage.get_markdown('raw-data',INPUT_FILENAMES_PREFIX,url)
 
 
-    # if not is_stage6_candidate(output_row):
-    #     output_row["stage6"] = None
-    #     storage.append_json('silver-data', INPUT_FILENAMES_PREFIX, output_row)
+    if not is_stage6_candidate(output_row):
+        output_row["stage6"] = None
+        # storage.append_json('silver-data', INPUT_FILENAMES_PREFIX, output_row)
 
-    #     debug_print("[SKIP][STAGE6] stage6=null, запись не проходит фильтры stage6")
-    #     debug_print("\n" + "=" * 80)
-    #     debug_print("=== ГОТОВО ===")
-    #     return
+        debug_print("[SKIP][STAGE6] stage6=null, запись не проходит фильтры stage6")
+        debug_print("\n" + "=" * 80)
+        debug_print("=== ГОТОВО ===")
+        return
 
-    assessment = get_stage4_assessment(output_row) or {}
-    kind = assessment.get("document_kind", "unknown")
+    # assessment = get_stage4_assessment(output_row) or {}
+    kind = output_row.get("document_kind", "unknown")
     debug_print(f"[CANDIDATE][STAGE6] document_kind={kind}")
 
     model = build_model()
@@ -598,22 +598,11 @@ async def main():
     debug_print(f"Успех: {stage6_result.success}")
 
     storage.append_json('silver-data', INPUT_FILENAMES_PREFIX, output_row)
-    storage.append_html(
-        "raw-data",
-        INPUT_FILENAMES_PREFIX,
-        output_row["url"],
-        output_row["cleaned_html"],
-    )
-    storage.append_markdown(
-        "raw-data",
-        INPUT_FILENAMES_PREFIX,
-        output_row["url"],
-        output_row["markdown_content"],
-    )
+
     
 # удаляем большие объекты из выходной строки так как иначе консольный аргумент слишком длинный
     output_row["cleaned_html"] = ""
-    output_row["markdown_content"] = ""
+    output_row["stage5"]["markdown_content"] = ""
     print("RESULT_JSON:" + json.dumps(output_row, ensure_ascii=False))
 
 

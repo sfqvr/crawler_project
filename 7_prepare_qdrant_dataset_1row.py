@@ -59,33 +59,33 @@ def build_embedding_text(
 
 
 def is_qdrant_candidate(row: dict) -> bool:
-    stage4 = row.get("stage4")
+    # stage4 = row.get("stage4")
     stage5 = row.get("stage5")
     stage6 = row.get("stage6")
 
-    if not isinstance(stage4, dict):
-        return False
+    # if not isinstance(stage4, dict):
+    #     return False
     if not isinstance(stage5, dict):
         return False
     if not isinstance(stage6, dict):
         return False
 
-    if stage4.get("success") is not True:
+    if row.get("stage4_success") is not True:
         return False
     if stage5.get("success") is not True:
         return False
     if stage6.get("success") is not True:
         return False
 
-    assessment = stage4.get("assessment")
+    # assessment = stage4.get("assessment")
     extraction = stage6.get("extraction")
 
-    if not isinstance(assessment, dict):
-        return False
+    # if not isinstance(assessment, dict):
+    #     return False
     if not isinstance(extraction, dict):
         return False
 
-    if assessment.get("is_relevant") is not True:
+    if row.get("is_relevant") is not True:
         return False
 
     markdown_content = stage5.get("markdown_content", "")
@@ -97,14 +97,11 @@ def is_qdrant_candidate(row: dict) -> bool:
 
 def transform_row(row: dict) -> dict:
     # stage4 = row["stage4"]
-    # stage5 = row["stage5"]
-    # stage6 = row["stage6"]
+    stage5 = row["stage5"]
+    stage6 = row["stage6"]
 
     # assessment = stage4["assessment"]
-    # extraction = stage6["extraction"]
-    assessment = row
-    extraction = row
-    stage5 = row
+    extraction = stage6["extraction"]
 
     metadata_filters = extraction.get("metadata_filters", {}) or {}
     searchable_text = extraction.get("searchable_text", {}) or {}
@@ -115,7 +112,7 @@ def transform_row(row: dict) -> dict:
     company = safe_str(extraction.get("company"))
     date = extraction.get("date")
     short_description = safe_str(extraction.get("short_description"))
-    document_kind = safe_str(assessment.get("document_kind"))
+    document_kind = safe_str(row.get("document_kind"))
 
     incident_categories = normalize_string_list(metadata_filters.get("incident_categories"))
     tech_stack = normalize_string_list(metadata_filters.get("tech_stack"))
@@ -215,17 +212,17 @@ def main():
     url = row.get("url", "")
     output_row = dict(row)
     output_row["cleaned_html"] = storage.get_html('raw-data',INPUT_FILENAMES_PREFIX,url)
-    output_row["markdown_content"] = storage.get_markdown('raw-data',INPUT_FILENAMES_PREFIX,url)
+    output_row["stage5"]["markdown_content"] = storage.get_markdown('raw-data',INPUT_FILENAMES_PREFIX,url)
 
 
-    # if not is_qdrant_candidate(output_row):
-    #     print("[SKIP] Запись не проходит qdrant-candidate фильтры")
-    #     print("=" * 80)
-    #     print("=== QDRANT DATASET PREPARATION COMPLETE ===")
-    #     print("Output rows: 0")
-    #     print("Filtered out: 1")
-    #     print("=" * 80)
-    #     return
+    if not is_qdrant_candidate(output_row):
+        print("[SKIP] Запись не проходит qdrant-candidate фильтры")
+        print("=" * 80)
+        print("=== QDRANT DATASET PREPARATION COMPLETE ===")
+        print("Output rows: 0")
+        print("Filtered out: 1")
+        print("=" * 80)
+        return
 
     transformed = transform_row(output_row)
     # storage.append_json('silver-data', INPUT_FILENAMES_PREFIX, transformed)
@@ -237,23 +234,13 @@ def main():
     print(f"URL: {transformed['url']}")
     print("=" * 80)
 
+    output_row |= transformed
+
     storage.append_json('silver-data', INPUT_FILENAMES_PREFIX, transformed)
-    storage.append_html(
-        "raw-data",
-        INPUT_FILENAMES_PREFIX,
-        output_row["url"],
-        output_row["cleaned_html"],
-    )
-    storage.append_markdown(
-        "raw-data",
-        INPUT_FILENAMES_PREFIX,
-        output_row["url"],
-        output_row["markdown_content"],
-    )
     
 # удаляем большие объекты из выходной строки так как иначе консольный аргумент слишком длинный
     output_row["cleaned_html"] = ""
-    output_row["markdown_content"] = ""
+    output_row["stage5"]["markdown_content"] = ""
     print("RESULT_JSON:" + json.dumps(output_row, ensure_ascii=False))
 
 if __name__ == "__main__":

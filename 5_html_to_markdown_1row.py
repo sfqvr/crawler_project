@@ -277,7 +277,7 @@ def run_stage5_for_row(agent, row: dict) -> Stage5Result:
     submission_buffer["markdown_content"] = None
 
     cleaned_html = row["cleaned_html"]
-    assessment = get_stage4_assessment(row) or {}
+    # assessment = get_stage4_assessment(row) or {}
     html_for_llm, was_truncated, original_len, llm_len = prepare_html_for_llm(cleaned_html)
 
     messages = PROMPT_TEMPLATE.invoke(
@@ -285,7 +285,7 @@ def run_stage5_for_row(agent, row: dict) -> Stage5Result:
             "name": row.get("name", ""),
             "url": row.get("url", ""),
             "description": row.get("description", ""),
-            "document_kind": assessment.get("document_kind", "unknown"),
+            "document_kind": row.get("document_kind", "unknown"),
             "cleaned_html_length": original_len,
             "cleaned_html": html_for_llm,
         }
@@ -400,8 +400,8 @@ async def main():
     #     debug_print("=== ГОТОВО ===")
     #     return
 
-    assessment = get_stage4_assessment(output_row) or {}
-    debug_print(f"[CANDIDATE][STAGE5] document_kind={assessment.get('document_kind', 'unknown')}")
+    # assessment = get_stage4_assessment(output_row) or {}
+    debug_print(f"[CANDIDATE][STAGE5] document_kind={output_row.get('document_kind', 'unknown')}")
 
     model = build_model()
     agent = build_agent(model)
@@ -413,7 +413,7 @@ async def main():
     if stage5_result.success:
         debug_print(
             "[OK][STAGE5] "
-            f"kind={assessment.get('document_kind')}, "
+            f"kind={output_row.get('document_kind')}, "
             f"markdown_length={stage5_result.markdown_length}"
         )
     else:
@@ -423,7 +423,7 @@ async def main():
     debug_print("=== ГОТОВО ===")
     debug_print(f"Успех: {stage5_result.success}")
 
-    storage.append_json('silver-data', INPUT_FILENAMES_PREFIX, output_row)
+    # storage.append_json('silver-data', INPUT_FILENAMES_PREFIX, output_row)
     storage.append_html(
         "raw-data",
         INPUT_FILENAMES_PREFIX,
@@ -434,12 +434,12 @@ async def main():
         "raw-data",
         INPUT_FILENAMES_PREFIX,
         output_row["url"],
-        output_row["markdown_content"],
+        stage5_result.markdown_content,
     )
     
 # удаляем большие объекты из выходной строки так как иначе консольный аргумент слишком длинный
     output_row["cleaned_html"] = ""
-    output_row["markdown_content"] = ""
+    output_row["stage5"]["markdown_content"] = ""
     print("RESULT_JSON:" + json.dumps(output_row, ensure_ascii=False))
 
 
